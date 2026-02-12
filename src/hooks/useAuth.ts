@@ -27,16 +27,15 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginFormData) => {
-      const { user, token } = await authService.login(credentials);
-      return { user, token };
+      const { access_token } = await authService.login(credentials);
+      return { token: access_token };
     },
-    onSuccess: ({ user, token }) => {
+    onSuccess: ({ token }) => {
       setToken(token);
-      setUser(user);
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', token);
       }
-      router.push('/dashboard');
+      router.push('/dashboard'); // Uncommented!
     },
   });
 
@@ -65,7 +64,9 @@ export function useAuth() {
     isAuthenticated,
     isLoading,
     login: loginMutation.mutate,
+    loginAsync: loginMutation.mutateAsync, // Add this for error handling
     isLoggingIn: loginMutation.isPending,
+    loginError: loginMutation.error, // Add this!
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
     profileError: profileQuery.error,

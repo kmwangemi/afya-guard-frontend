@@ -7,15 +7,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { type LoginFormData, LoginSchema } from '@/lib/validations';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Shield } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login, isLoggingIn } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-
+  const { login, isLoggingIn, loginError } = useAuth(); // Added loginError
   const {
     register,
     handleSubmit,
@@ -23,16 +18,15 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(LoginSchema),
   });
-
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      setError(null);
-      login(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    }
+  const onSubmit = (data: LoginFormData) => {
+    login(data); // No try-catch needed, error is in loginError
   };
-
+  // Get error message from loginError
+  const errorMessage = loginError
+    ? loginError instanceof Error
+      ? loginError.message
+      : 'Login failed. Please check your credentials.'
+    : null;
   return (
     <Card className='border-0 bg-white shadow-2xl'>
       <div className='p-8 space-y-6'>
@@ -52,9 +46,9 @@ export default function LoginPage() {
           </p>
         </div>
         {/* Error Message */}
-        {error && (
+        {errorMessage && (
           <div className='bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600'>
-            {error}
+            {errorMessage}
           </div>
         )}
         {/* Form */}
