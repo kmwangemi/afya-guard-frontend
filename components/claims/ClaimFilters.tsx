@@ -1,14 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { claimFilterSchema, ClaimFilterValues } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -17,12 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { KENYAN_COUNTIES } from '@/lib/constants';
-import { claimFilterSchema, ClaimFilterValues } from '@/lib/validations';
-import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '@/components/ui/form';
+import { Card } from '@/components/ui/card';
 import { Search, X } from 'lucide-react';
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { KENYAN_COUNTIES } from '@/lib/constants';
 
 interface ClaimFiltersProps {
   onFilter: (filters: Partial<ClaimFilterValues>) => void;
@@ -36,23 +36,16 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
     resolver: zodResolver(claimFilterSchema),
     defaultValues: {
       search: '',
-      status: 'all', // Changed from ""
-      riskLevel: 'all', // Changed from ""
-      county: 'all', // Changed from ""
+      status: '',
+      riskLevel: '',
+      county: '',
       page: 1,
       pageSize: 25,
     },
   });
 
   const handleSubmit = (values: ClaimFilterValues) => {
-    // Convert "all" back to empty string or undefined before sending to API
-    const filters = {
-      ...values,
-      status: values.status === 'all' ? undefined : values.status,
-      riskLevel: values.riskLevel === 'all' ? undefined : values.riskLevel,
-      county: values.county === 'all' ? undefined : values.county,
-    };
-    onFilter(filters);
+    onFilter(values);
   };
 
   const handleReset = () => {
@@ -107,7 +100,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
                   <FormLabel>Status</FormLabel>
                   <Select
                     value={field.value || 'all'}
-                    onValueChange={field.onChange}
+                    onValueChange={v => field.onChange(v === 'all' ? '' : v)}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -137,7 +130,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
                   <FormLabel>Risk Level</FormLabel>
                   <Select
                     value={field.value || 'all'}
-                    onValueChange={field.onChange}
+                    onValueChange={v => field.onChange(v === 'all' ? '' : v)}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -164,7 +157,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
                   <FormLabel>County</FormLabel>
                   <Select
                     value={field.value || 'all'}
-                    onValueChange={field.onChange}
+                    onValueChange={v => field.onChange(v === 'all' ? '' : v)}
                   >
                     <FormControl>
                       <SelectTrigger>

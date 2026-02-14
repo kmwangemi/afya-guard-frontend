@@ -5,6 +5,16 @@ import { useParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Provider } from "@/types/provider";
 import { mockProvidersService } from "@/services/mockProvidersService";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
@@ -20,13 +30,20 @@ import {
 } from "@/components/ui/table";
 import { ChevronLeft, AlertCircle, TrendingUp, Users, FileText } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProviderDetailPage() {
   const params = useParams();
   const providerId = params.id as string;
+  const { toast } = useToast();
 
   const [provider, setProvider] = useState<Provider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [flagReason, setFlagReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -43,6 +60,74 @@ export default function ProviderDetailPage() {
 
     loadData();
   }, [providerId]);
+
+  const handleSuspend = async () => {
+    if (!suspendReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for suspending the provider",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updatedProvider = await mockProvidersService.suspendProvider(providerId, suspendReason);
+      if (updatedProvider) {
+        setProvider(updatedProvider);
+        setSuspendDialogOpen(false);
+        setSuspendReason("");
+        toast({
+          title: "Success",
+          description: "Provider has been suspended successfully",
+        });
+      }
+    } catch (error) {
+      console.error("[v0] Error suspending provider:", error);
+      toast({
+        title: "Error",
+        description: "Failed to suspend provider",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFlag = async () => {
+    if (!flagReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for flagging the provider",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updatedProvider = await mockProvidersService.flagForReview(providerId, flagReason);
+      if (updatedProvider) {
+        setProvider(updatedProvider);
+        setFlagDialogOpen(false);
+        setFlagReason("");
+        toast({
+          title: "Success",
+          description: "Provider has been flagged for review",
+        });
+      }
+    } catch (error) {
+      console.error("[v0] Error flagging provider:", error);
+      toast({
+        title: "Error",
+        description: "Failed to flag provider",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -83,8 +168,18 @@ export default function ProviderDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Suspend</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700">Flag for Review</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setSuspendDialogOpen(true)}
+            >
+              Suspend
+            </Button>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setFlagDialogOpen(true)}
+            >
+              Flag for Review
+            </Button>
           </div>
         </div>
 
@@ -305,6 +400,83 @@ export default function ProviderDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Suspend Dialog */}
+        <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Suspend Provider</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for suspending {provider?.name}. This action will prevent the provider from submitting new claims.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Enter reason for suspension..."
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSuspendDialogOpen(false);
+                  setSuspendReason("");
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleSuspend}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Suspending..." : "Suspend"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Flag for Review Dialog */}
+        <Dialog open={flagDialogOpen} onOpenChange={setFlagDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Flag Provider for Review</DialogTitle>
+              <DialogDescription>
+                Please provide details about why {provider?.name} should be flagged for review. This will trigger an investigation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Enter reason for flagging..."
+                value={flagReason}
+                onChange={(e) => setFlagReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFlagDialogOpen(false);
+                  setFlagReason("");
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleFlag}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Flagging..." : "Flag for Review"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

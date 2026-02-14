@@ -162,4 +162,67 @@ export const mockProvidersService = {
       performanceMetrics: {},
     };
   },
+
+  suspendProvider: async (providerId: string, reason: string): Promise<Provider | null> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    // In a real app, this would call the backend API
+    const providers = generateMockProviders(100);
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider) {
+      provider.notes = `Suspended: ${reason}`;
+    }
+    return provider || null;
+  },
+
+  flagForReview: async (providerId: string, reason: string): Promise<Provider | null> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const providers = generateMockProviders(100);
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider) {
+      provider.notes = `Flagged for review: ${reason}`;
+    }
+    return provider || null;
+  },
+
+  addProvider: async (providerData: Partial<Provider>): Promise<Provider> => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const newProvider: Provider = {
+      id: `prov_${Date.now()}`,
+      code: `NHF-${Math.floor(Math.random() * 100000)}`,
+      name: providerData.name || "New Provider",
+      facilityType: providerData.facilityType || "hospital",
+      countyCode: providerData.countyCode || "NAI",
+      countyName: providerData.countyName || "Nairobi",
+      subcounty: providerData.subcounty || "Sub-county",
+      location: providerData.location || "Location",
+      contact: providerData.contact || "0712345678",
+      email: providerData.email || "email@provider.ke",
+      licenseNumber: providerData.licenseNumber || "LIC-001",
+      licenseExpiryDate: providerData.licenseExpiryDate || new Date(),
+      riskScore: 50,
+      riskLevel: "medium",
+      statistics: {
+        totalClaims: 0,
+        flaggedClaims: 0,
+        flaggedPercentage: 0,
+        fraudPrevented: 0,
+      },
+    };
+    return newProvider;
+  },
+
+  updateProvider: async (providerId: string, providerData: Partial<Provider>): Promise<Provider | null> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const providers = generateMockProviders(100);
+    const provider = providers.find((p) => p.id === providerId);
+    if (provider) {
+      Object.assign(provider, providerData);
+    }
+    return provider || null;
+  },
+
+  deleteProvider: async (providerId: string): Promise<boolean> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return true;
+  },
 };
