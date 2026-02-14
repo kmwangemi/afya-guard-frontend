@@ -179,3 +179,21 @@ export const isPercentageInRange = (
   const percentage = value * 100;
   return percentage >= min && percentage <= max;
 };
+
+/**
+ * Generate a unique mock ID with prefix
+ */
+export const generateMockId = (prefix: string = "id"): string => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${prefix}_${timestamp}${randomStr}`;
+};
+
+/**
+ * Get a random element from an array
+ */
+export const getRandomElement = <T>(array: T[]): T => {
+  if (array.length === 0) throw new Error("Array is empty");
+  return array[Math.floor(Math.random() * array.length)];
+};
+

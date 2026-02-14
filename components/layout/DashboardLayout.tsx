@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+// import { useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+// import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

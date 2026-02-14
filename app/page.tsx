@@ -7,7 +7,7 @@ import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 export default function Page() {
   const router = useRouter();
-  // const { checkAuth } = useAuthStore();
+  const { checkAuth } = useAuthStore();
 
   // useEffect(() => {
   //   const authenticate = async () => {

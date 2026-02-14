@@ -6,7 +6,7 @@ __v0_jsx-dev-runtime.ts
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -37,6 +37,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env*.local
 
 # vercel
 .vercel

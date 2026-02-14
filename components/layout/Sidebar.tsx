@@ -12,46 +12,60 @@ import {
   FolderOpen,
   BarChart3,
   ChevronLeft,
+  User,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: 'Dashboard',
+    href: '/dashboard',
     icon: LayoutDashboard,
-    permission: "view_claims",
+    permission: 'view_claims',
   },
   {
-    title: "Claims",
-    href: "/claims",
+    title: 'Claims',
+    href: '/claims',
     icon: FileText,
-    permission: "view_claims",
+    permission: 'view_claims',
   },
   {
-    title: "Providers",
-    href: "/providers",
+    title: 'Providers',
+    href: '/providers',
     icon: Building2,
-    permission: "view_claims",
+    permission: 'view_claims',
   },
   {
-    title: "Alerts",
-    href: "/alerts",
+    title: 'Alerts',
+    href: '/alerts',
     icon: Bell,
-    permission: "view_alerts",
+    permission: 'view_alerts',
   },
   {
-    title: "Investigations",
-    href: "/investigations",
+    title: 'Investigations',
+    href: '/investigations',
     icon: FolderOpen,
-    permission: "create_investigation",
+    permission: 'create_investigation',
   },
   {
-    title: "Reports",
-    href: "/reports",
+    title: 'Reports',
+    href: '/reports',
     icon: BarChart3,
-    permission: "view_reports",
+    permission: 'view_reports',
+  },
+  {
+    title: 'Profile',
+    href: '/profile',
+    icon: User,
+    permission: 'view_claims',
+  },
+  {
+    title: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    permission: 'view_claims',
   },
 ];
 
@@ -106,7 +120,6 @@ export function Sidebar() {
               );
             })}
           </nav>
-
           {/* Footer */}
           <div className="border-t border-gray-200 p-4">
             <Button

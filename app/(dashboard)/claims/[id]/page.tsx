@@ -1,47 +1,120 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Claim, ClaimAnalysis } from "@/types/claim";
-import { mockClaimsService } from "@/services/mockClaimsService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useClaimById, useClaimAnalysis, useApproveClaim, useRejectClaim, useFlagClaimForInvestigation, useAssignClaimToInvestigator } from "@/hooks/queries/useClaims";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { RiskScoreBadge } from "@/components/shared/RiskScoreBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate, formatDateTime, formatCurrency, maskPatientId } from "@/lib/helpers";
-import { ChevronLeft, AlertCircle, CheckCircle2, Download, Share2 } from "lucide-react";
+import { ChevronLeft, AlertCircle, CheckCircle2, Download, Share2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function ClaimDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const claimId = params.id as string;
 
-  const [claim, setClaim] = useState<Claim | null>(null);
-  const [analysis, setAnalysis] = useState<ClaimAnalysis | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [showActionModal, setShowActionModal] = useState<"approve" | "reject" | "investigate" | "assign" | "share" | null>(null);
+  const [actionNotes, setActionNotes] = useState("");
+  const [selectedInvestigator, setSelectedInvestigator] = useState("");
+  const [investigationType, setInvestigationType] = useState("suspected_fraud");
+  const [shareEmail, setShareEmail] = useState("");
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [claimData, analysisData] = await Promise.all([
-          mockClaimsService.getClaimById(claimId),
-          mockClaimsService.getClaimAnalysis(claimId),
-        ]);
-        setClaim(claimData);
-        setAnalysis(analysisData);
-      } catch (error) {
-        console.error("[v0] Error loading claim:", error);
-      } finally {
-        setIsLoading(false);
-      }
+  const { data: claim, isLoading: claimLoading } = useClaimById(claimId);
+  const { data: analysis, isLoading: analysisLoading } = useClaimAnalysis(claimId);
+  const approveClaim = useApproveClaim();
+  const rejectClaim = useRejectClaim();
+  const flagForInvestigation = useFlagClaimForInvestigation();
+  const assignToInvestigator = useAssignClaimToInvestigator();
+
+  const isLoading = claimLoading || analysisLoading;
+
+  const handleApproveClaim = async () => {
+    try {
+      await approveClaim.mutateAsync({ claimId, notes: actionNotes });
+      setShowActionModal(null);
+      setActionNotes("");
+    } catch (error) {
+      console.error("[v0] Error approving claim:", error);
+    }
+  };
+
+  const handleRejectClaim = async () => {
+    try {
+      await rejectClaim.mutateAsync({ claimId, reason: actionNotes });
+      setShowActionModal(null);
+      setActionNotes("");
+    } catch (error) {
+      console.error("[v0] Error rejecting claim:", error);
+    }
+  };
+
+  const handleFlagForInvestigation = async () => {
+    try {
+      await flagForInvestigation.mutateAsync({ claimId, investigationType });
+      setShowActionModal(null);
+      setInvestigationType("suspected_fraud");
+    } catch (error) {
+      console.error("[v0] Error flagging claim:", error);
+    }
+  };
+
+  const handleAssignInvestigator = async () => {
+    if (!selectedInvestigator) return;
+    try {
+      await assignToInvestigator.mutateAsync({
+        claimId,
+        investigatorId: selectedInvestigator,
+        investigatorName: selectedInvestigator,
+      });
+      setShowActionModal(null);
+      setSelectedInvestigator("");
+    } catch (error) {
+      console.error("[v0] Error assigning claim:", error);
+    }
+  };
+
+  const handleDownloadClaim = () => {
+    if (!claim) return;
+    const claimData = {
+      id: claim.id,
+      claimNumber: claim.claimNumber,
+      status: claim.status,
+      providerName: claim.providerName,
+      patientId: maskPatientId(claim.patientId),
+      amount: claim.amount,
+      createdAt: claim.createdAt,
+      lastUpdated: claim.updatedAt,
     };
+    
+    const dataStr = JSON.stringify(claimData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `claim-${claim.claimNumber}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
-    loadData();
-  }, [claimId]);
+  const handleShareClaim = () => {
+    if (!shareEmail.trim()) return;
+    console.log("[v0] Sharing claim to:", shareEmail);
+    setShareEmail("");
+  };
 
   if (isLoading) {
     return (
@@ -64,23 +137,42 @@ export default function ClaimDetailPage() {
     );
   }
 
+  const investigators = ["Jane Smith", "John Omondi", "Maria Garcia", "Ahmed Hassan", "Sarah Wilson"];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/claims">
-              <Button variant="ghost" size="sm">
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
-              </Button>
-            </Link>
+          <Link
+            href="/claims"
+            className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Claims
+          </Link>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadClaim}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Download
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowActionModal("share" as any)}
+            >
+              <Share2 className="h-4 w-4 mr-1" />
+              Share
+            </Button>
+          </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{claim.claimNumber}</h1>
               <p className="text-gray-600 mt-1">{claim.providerName}</p>
             </div>
-          </div>
           <div className="flex gap-2">
             <Button variant="outline">
               <Share2 className="h-4 w-4 mr-2" />
@@ -92,7 +184,6 @@ export default function ClaimDetailPage() {
             </Button>
           </div>
         </div>
-
         {/* Status Bar */}
         <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -114,7 +205,6 @@ export default function ClaimDetailPage() {
             </div>
           </div>
         </Card>
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Details */}
@@ -151,7 +241,6 @@ export default function ClaimDetailPage() {
                 </div>
               </div>
             </Card>
-
             {/* Fraud Flags */}
             {claim.fraudFlags.length > 0 && (
               <Card className="p-6 border-red-200 bg-red-50">
@@ -182,12 +271,10 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-
             {/* Fraud Analysis */}
             {analysis && (
               <Card className="p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Fraud Analysis</h3>
-                
                 {/* Phantom Patient Analysis */}
                 <div className="mb-6">
                   <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
@@ -204,7 +291,6 @@ export default function ClaimDetailPage() {
                     <p><span className="font-medium">Visit Frequency Anomaly:</span> {analysis.phantomPatient.visitFrequencyAnomaly ? "Yes" : "No"}</p>
                   </div>
                 </div>
-
                 {/* Upcoding Analysis */}
                 <div className="mb-6">
                   <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
@@ -221,7 +307,6 @@ export default function ClaimDetailPage() {
                     <p><span className="font-medium">ML Detection Score:</span> {analysis.upcoding.mlDetectionScore.toFixed(1)}</p>
                   </div>
                 </div>
-
                 {/* Duplicate Detection */}
                 <div>
                   <h4 className="font-medium text-gray-900 mb-3">Duplicate Detection</h4>
@@ -233,30 +318,180 @@ export default function ClaimDetailPage() {
               </Card>
             )}
           </div>
-
           {/* Right Column - Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
               <div className="space-y-2">
-                <Button className="w-full bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={() => setShowActionModal("approve")}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  disabled={approveClaim.isPending}
+                >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
-                <Button className="w-full bg-red-600 hover:bg-red-700">
+                <Button 
+                  onClick={() => setShowActionModal("reject")}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  disabled={rejectClaim.isPending}
+                >
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Reject
                 </Button>
-                <Button className="w-full variant-outline">
+                <Button 
+                  onClick={() => setShowActionModal("investigate")}
+                  className="w-full"
+                  variant="outline"
+                  disabled={flagForInvestigation.isPending}
+                >
                   Create Investigation
                 </Button>
-                <Button className="w-full variant-outline">
+                <Button 
+                  onClick={() => setShowActionModal("assign")}
+                  className="w-full"
+                  variant="outline"
+                  disabled={assignToInvestigator.isPending}
+                >
                   Assign to Investigator
                 </Button>
               </div>
             </Card>
-
+            {/* Action Modals */}
+            {showActionModal === "approve" && (
+              <Card className="p-6 border-green-200 bg-green-50">
+                <h4 className="font-semibold text-green-900 mb-3">Approve Claim</h4>
+                <Textarea
+                  placeholder="Add approval notes (optional)..."
+                  value={actionNotes}
+                  onChange={(e) => setActionNotes(e.target.value)}
+                  className="mb-3"
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleApproveClaim}
+                    disabled={approveClaim.isPending}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    Confirm Approval
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setActionNotes("");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
+            {showActionModal === "reject" && (
+              <Card className="p-6 border-red-200 bg-red-50">
+                <h4 className="font-semibold text-red-900 mb-3">Reject Claim</h4>
+                <Textarea
+                  placeholder="Provide rejection reason..."
+                  value={actionNotes}
+                  onChange={(e) => setActionNotes(e.target.value)}
+                  className="mb-3"
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleRejectClaim}
+                    disabled={rejectClaim.isPending || !actionNotes}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    Confirm Rejection
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setActionNotes("");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
+            {showActionModal === "investigate" && (
+              <Card className="p-6 border-blue-200 bg-blue-50">
+                <h4 className="font-semibold text-blue-900 mb-3">Create Investigation</h4>
+                <Select value={investigationType} onValueChange={setInvestigationType}>
+                  <SelectTrigger className="mb-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="suspected_fraud">Suspected Fraud</SelectItem>
+                    <SelectItem value="phantom_patient">Phantom Patient</SelectItem>
+                    <SelectItem value="upcoding">Upcoding</SelectItem>
+                    <SelectItem value="duplicate">Duplicate Claim</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleFlagForInvestigation}
+                    disabled={flagForInvestigation.isPending}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Create Investigation
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setInvestigationType("suspected_fraud");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
+            {showActionModal === "assign" && (
+              <Card className="p-6 border-purple-200 bg-purple-50">
+                <h4 className="font-semibold text-purple-900 mb-3">Assign Investigator</h4>
+                <Select value={selectedInvestigator} onValueChange={setSelectedInvestigator}>
+                  <SelectTrigger className="mb-3">
+                    <SelectValue placeholder="Select investigator" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {investigators.map((inv) => (
+                      <SelectItem key={inv} value={inv}>
+                        {inv}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAssignInvestigator}
+                    disabled={assignToInvestigator.isPending || !selectedInvestigator}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    Assign
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setSelectedInvestigator("");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
             {/* Metadata */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Details</h3>
@@ -275,6 +510,40 @@ export default function ClaimDetailPage() {
                 </div>
               </div>
             </Card>
+            {showActionModal === "share" && (
+              <Card className="p-6 border-blue-200 bg-blue-50">
+                <h4 className="font-semibold text-blue-900 mb-3">Share Claim</h4>
+                <p className="text-sm text-blue-800 mb-3">
+                  Enter email address(es) to share this claim with other team members
+                </p>
+                <input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleShareClaim}
+                    disabled={!shareEmail.trim()}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Share
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setShareEmail("");
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>

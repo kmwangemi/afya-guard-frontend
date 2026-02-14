@@ -165,4 +165,50 @@ export const mockClaimsService = {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return new Blob(["mock data"], { type: "text/plain" });
   },
+
+  approveClaim: async (claimId: string, notes?: string): Promise<Claim> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const claims = generateMockClaims(100);
+    const claim = claims.find((c) => c.id === claimId);
+    if (!claim) throw new Error("Claim not found");
+    claim.status = "approved";
+    claim.approvedAmount = claim.amount * 0.9; // 90% of claim amount
+    claim.updatedAt = new Date();
+    if (notes) claim.notes = notes;
+    return claim;
+  },
+
+  rejectClaim: async (claimId: string, reason: string): Promise<Claim> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const claims = generateMockClaims(100);
+    const claim = claims.find((c) => c.id === claimId);
+    if (!claim) throw new Error("Claim not found");
+    claim.status = "rejected";
+    claim.rejectedAmount = claim.amount;
+    claim.notes = `Rejected: ${reason}`;
+    claim.updatedAt = new Date();
+    return claim;
+  },
+
+  flagForInvestigation: async (claimId: string, investigationType: string): Promise<Claim> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const claims = generateMockClaims(100);
+    const claim = claims.find((c) => c.id === claimId);
+    if (!claim) throw new Error("Claim not found");
+    claim.status = "under_investigation";
+    claim.notes = `Flagged for ${investigationType} investigation`;
+    claim.updatedAt = new Date();
+    return claim;
+  },
+
+  assignInvestigator: async (claimId: string, investigatorId: string, investigatorName: string): Promise<Claim> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const claims = generateMockClaims(100);
+    const claim = claims.find((c) => c.id === claimId);
+    if (!claim) throw new Error("Claim not found");
+    claim.status = "under_investigation";
+    claim.notes = `Assigned to investigator: ${investigatorName}`;
+    claim.updatedAt = new Date();
+    return claim;
+  },
 };

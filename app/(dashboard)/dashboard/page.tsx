@@ -1,61 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
 import { CountyHeatmap } from "@/components/dashboard/CountyHeatmap";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { Button } from "@/components/ui/button";
-import { mockDashboardService } from "@/services/mockDashboardService";
-import { DashboardStats, TrendData, CountyFraudData } from "@/types/common";
-import { Alert } from "@/types/alert";
+import { useDashboardStats, useClaimsTrend, useCountyFraudAnalysis, useRecentAlerts } from "@/hooks/queries/useDashboard";
 import { BarChart3, AlertTriangle, TrendingUp, Shield } from "lucide-react";
 import { RefreshCw } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers";
+import { useState } from "react";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [trendData, setTrendData] = useState<TrendData[]>([]);
-  const [countyData, setCountyData] = useState<CountyFraudData[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const [statsData, trends, counties, alertsList] = await Promise.all([
-        mockDashboardService.getStats(),
-        mockDashboardService.getTrendData(),
-        mockDashboardService.getCountyFraudData(),
-        mockDashboardService.getCriticalAlerts(10),
-      ]);
+  // Fetch data using React Query hooks
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: trendData, isLoading: trendLoading } = useClaimsTrend();
+  const { data: countyData, isLoading: countyLoading } = useCountyFraudAnalysis();
+  const { data: alerts, isLoading: alertsLoading } = useRecentAlerts(10);
 
-      setStats(statsData);
-      setTrendData(trends);
-      setCountyData(counties);
-      setAlerts(alertsList);
-    } catch (error) {
-      console.error("[v0] Error loading dashboard data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const isLoading = statsLoading || trendLoading || countyLoading || alertsLoading;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadData();
-    setIsRefreshing(false);
+    try {
+      // Invalidate all dashboard queries to force refresh
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "trends"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "county-analysis"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "recent-alerts"] }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
-
-  useEffect(() => {
-    loadData();
-
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(loadData, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <DashboardLayout>
@@ -75,7 +58,6 @@ export default function DashboardPage() {
             Refresh
           </Button>
         </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -84,6 +66,7 @@ export default function DashboardPage() {
             icon={BarChart3}
             color="blue"
             change={{ value: 12, trend: "up" }}
+            isLoading={statsLoading}
           />
           <StatCard
             title="Flagged Claims"
@@ -91,6 +74,7 @@ export default function DashboardPage() {
             icon={AlertTriangle}
             color="red"
             change={{ value: 8, trend: "up" }}
+            isLoading={statsLoading}
           />
           <StatCard
             title="Critical Alerts"
@@ -98,6 +82,7 @@ export default function DashboardPage() {
             icon={TrendingUp}
             color="orange"
             change={{ value: 3, trend: "down" }}
+            isLoading={statsLoading}
           />
           <StatCard
             title="Fraud Prevented"
@@ -105,13 +90,13 @@ export default function DashboardPage() {
             icon={Shield}
             color="green"
             change={{ value: 25, trend: "up" }}
+            isLoading={statsLoading}
           />
         </div>
-
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <TrendChart data={trendData} isLoading={isLoading} />
+            <TrendChart data={trendData || []} isLoading={trendLoading} />
           </div>
           <div className="lg:col-span-1">
             {/* Risk Distribution - Placeholder */}
@@ -158,12 +143,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
         {/* County Heatmap */}
-        <CountyHeatmap data={countyData} isLoading={isLoading} />
-
+        <CountyHeatmap data={countyData || []} isLoading={countyLoading} />
         {/* Recent Alerts */}
-        <RecentAlerts alerts={alerts} isLoading={isLoading} />
+        <RecentAlerts alerts={alerts || []} isLoading={alertsLoading} />
       </div>
     </DashboardLayout>
   );
