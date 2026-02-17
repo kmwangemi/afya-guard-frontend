@@ -1,92 +1,100 @@
-"use client";
+'use client';
 
-import { useAuthStore } from "@/stores/authStore";
-import { useUIStore } from "@/stores/uiStore";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Menu, LogOut, Settings, User } from "lucide-react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { getInitials } from "@/lib/helpers";
+} from '@/components/ui/dropdown-menu';
+import { getInitials } from '@/lib/helpers';
+import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
+import { LogOut, Menu, Settings, User } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const { user, logout } = useAuthStore();
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar } = useUIStore();
   const router = useRouter();
 
   const handleLogout = () => {
     logout();
-    router.push("/login");
+    router.push('/login');
   };
 
+  // Derive full name from snake_case fields
+  const fullName = user ? `${user.first_name} ${user.last_name}` : '';
+
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
-      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
+    <header className='sticky top-0 z-30 border-b border-gray-200 bg-white'>
+      <div className='flex h-16 items-center justify-between px-4 lg:px-6'>
         {/* Left section - Sidebar toggle + Logo */}
-        <div className="flex items-center gap-4">
+        <div className='flex items-center gap-4'>
           <Button
-            variant="ghost"
-            size="icon"
+            variant='ghost'
+            size='icon'
             onClick={toggleSidebar}
-            className="lg:hidden"
+            className='lg:hidden'
           >
-            <Menu className="h-5 w-5" />
+            <Menu className='h-5 w-5' />
           </Button>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold text-sm">
+          <div className='flex items-center gap-2'>
+            <div className='h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold text-sm'>
               SHA
             </div>
-            <h1 className="hidden sm:block text-lg font-bold text-gray-900">
+            <h1 className='hidden sm:block text-lg font-bold text-gray-900'>
               SHA Fraud Detection
             </h1>
           </div>
         </div>
         {/* Right section - User menu */}
-        <div className="flex items-center gap-4">
+        <div className='flex items-center gap-4'>
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex gap-2">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs">
-                    {getInitials(user.fullName)}
+                <Button variant='ghost' size='sm' className='flex gap-2'>
+                  <div className='h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs'>
+                    {getInitials(fullName)} {/* ✅ derived fullName */}
                   </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-sm font-medium text-gray-900">
-                      {user.firstName}
+                  <div className='hidden sm:block text-left'>
+                    <p className='text-sm font-medium text-gray-900'>
+                      {user.first_name} {/* ✅ was user.firstName */}
                     </p>
-                    <p className="text-xs text-gray-500">{user.role}</p>
+                    <p className='text-xs text-gray-500 capitalize'>
+                      {user.role}
+                    </p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user.fullName}
+              <DropdownMenuContent align='end' className='w-56'>
+                <div className='px-2 py-1.5'>
+                  <p className='text-sm font-medium text-gray-900'>
+                    {fullName} {/* ✅ was user.fullName */}
                   </p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className='text-xs text-gray-500'>{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <Link href="/profile">
+                <Link href='/profile'>
                   <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
+                    <User className='mr-2 h-4 w-4' />
                     <span>Profile</span>
                   </DropdownMenuItem>
                 </Link>
-                <Link href="/settings">
+                <Link href='/settings'>
                   <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className='mr-2 h-4 w-4' />
                     <span>Settings</span>
                   </DropdownMenuItem>
                 </Link>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className='text-red-600'
+                >
+                  <LogOut className='mr-2 h-4 w-4' />
                   <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

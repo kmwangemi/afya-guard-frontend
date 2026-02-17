@@ -1,26 +1,23 @@
-export type UserRole = "admin" | "investigator" | "analyst" | "viewer";
+export type UserRole = 'admin' | 'investigator' | 'analyst';
 
-export type UserStatus = "active" | "inactive" | "suspended";
+export type UserStatus = 'active' | 'inactive' | 'suspended';
 
 export interface User {
-  id: string;
+  id: string; // UUID
+  first_name: string;
+  last_name: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
+  phone_number: string;
   role: UserRole;
   status: UserStatus;
-  department?: string;
-  phone?: string;
-  avatar?: string;
-  createdAt: Date;
-  updatedAt: Date;
   lastLogin?: Date;
-  permissions: string[];
+  profile_picture_url: string | null;
+  created_at: string; // ISO datetime string
+  updated_at: string; // ISO datetime string
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
   rememberMe?: boolean;
 }
@@ -29,7 +26,7 @@ export interface LoginResponse {
   user: User;
   token: string;
   refreshToken?: string;
-  expiresIn: number;
+  expiresIn?: number;
 }
 
 export interface AuthState {
