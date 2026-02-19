@@ -5,6 +5,13 @@ export interface DashboardStats {
   estimatedFraudPrevented: number;
 }
 
+export interface DecodedToken {
+  sub: string;
+  // role: string;
+  iat: number;
+  exp: number;
+}
+
 export interface TrendData {
   date: string;
   totalClaims: number;
@@ -48,7 +55,7 @@ export interface FilterParams {
   page?: number;
   pageSize?: number;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
   [key: string]: any;
 }
 
@@ -66,7 +73,7 @@ export interface ErrorResponse {
   timestamp: Date;
 }
 
-export type SortOrder = "asc" | "desc";
+export type SortOrder = 'asc' | 'desc';
 
 export interface SortConfig {
   field: string;

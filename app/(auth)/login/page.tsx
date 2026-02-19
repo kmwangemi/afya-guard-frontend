@@ -1,5 +1,6 @@
 'use client';
 
+import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -85,8 +86,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel className='text-gray-700'>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type='password'
+                      <PasswordInput
                         placeholder='••••••••'
                         {...field}
                         disabled={isPending}
@@ -98,7 +98,7 @@ export default function LoginPage() {
                 )}
               />
               {/* Remember Me */}
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name='rememberMe'
                 render={({ field }) => (
@@ -119,7 +119,7 @@ export default function LoginPage() {
                     </div>
                   </FormItem>
                 )}
-              />
+              /> */}
               {/* Submit Button */}
               <Button
                 type='submit'
