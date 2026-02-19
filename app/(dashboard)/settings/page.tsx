@@ -22,14 +22,11 @@ export default function SettingsPage() {
     dailyDigest: true,
     weeklyReport: true,
   });
-
   const [visibility, setVisibility] = useState({
     showEmail: true,
     showPhone: false,
   });
-
   const [theme, setTheme] = useState("light");
-
   return (
     <DashboardLayout>
       <div className="max-w-4xl space-y-6">
@@ -38,7 +35,6 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-600 mt-1">Manage your application preferences and security settings</p>
         </div>
-
         {/* Profile Settings */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -84,7 +80,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
-
         {/* Notification Settings */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -153,7 +148,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
-
         {/* Privacy Settings */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -194,7 +188,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
-
         {/* Theme Settings */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Theme & Display</h2>
@@ -217,7 +210,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
-
         {/* Security Settings */}
         <Card className="p-6 border-red-200">
           <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
