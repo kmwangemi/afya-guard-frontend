@@ -5,11 +5,13 @@ import { persist } from 'zustand/middleware';
 interface AuthState {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean;
+  hasHydrated: boolean;
+
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   logout: () => void;
   checkAuth: () => boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -17,34 +19,42 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
-      isAuthenticated: false,
+      hasHydrated: false,
 
       setUser: user => {
-        set({ user, isAuthenticated: true });
+        set({ user });
       },
 
       setToken: token => {
         set({ token });
-        // Zustand persist handles this automatically under 'auth-storage'
       },
 
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false });
-        // Zustand persist clears its own key automatically on state reset
+        set({
+          user: null,
+          token: null,
+        });
       },
 
       checkAuth: () => {
-        // Read token from Zustand state, not localStorage directly
         return !!get().token;
+      },
+
+      setHasHydrated: state => {
+        set({ hasHydrated: state });
       },
     }),
     {
       name: 'auth-storage',
+
       partialize: state => ({
         user: state.user,
         token: state.token,
-        isAuthenticated: state.isAuthenticated,
       }),
+
+      onRehydrateStorage: () => state => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

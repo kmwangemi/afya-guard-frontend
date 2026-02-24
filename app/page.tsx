@@ -7,14 +7,15 @@ import { useEffect } from 'react';
 
 export default function Page() {
   const router = useRouter();
-  const { checkAuth } = useAuthStore();
+  const { token, hasHydrated } = useAuthStore();
   useEffect(() => {
-    if (checkAuth()) {
-      router.push('/dashboard');
+    if (!hasHydrated) return;
+    if (token) {
+      router.replace('/dashboard');
     } else {
-      router.push('/login');
+      router.replace('/login');
     }
-  }, []);
+  }, [token, hasHydrated, router]);
   return (
     <div className='flex h-screen items-center justify-center'>
       <LoadingSpinner text='Loading...' />

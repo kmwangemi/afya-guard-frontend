@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/stores/authStore';
 import axios, { AxiosInstance } from 'axios';
 import { API_BASE_URL, API_TIMEOUT } from './constants';
 
@@ -11,22 +12,13 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 // Request interceptor - add auth token
-apiClient.interceptors.request.use(
-  config => {
-    if (typeof window !== 'undefined') {
-      // Read from Zustand's persist key instead of the old standalone key
-      const authStorage = localStorage.getItem('auth-storage');
-      if (authStorage) {
-        const { state } = JSON.parse(authStorage);
-        if (state?.token) {
-          config.headers.Authorization = `Bearer ${state.token}`;
-        }
-      }
-    }
-    return config;
-  },
-  error => Promise.reject(error),
-);
+apiClient.interceptors.request.use(config => {
+  const token = useAuthStore.getState().token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Response interceptor - handle 401
 // apiClient.interceptors.response.use(
