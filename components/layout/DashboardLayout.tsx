@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -11,17 +12,22 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isAuthenticated, checkAuth } = useAuthStore();
   const router = useRouter();
+  const { token, hasHydrated } = useAuthStore();
   useEffect(() => {
-    if (!checkAuth()) {
-      router.push('/login');
+    if (hasHydrated && !token) {
+      router.replace('/login');
     }
-  }, []);
-  // Don't render dashboard content until authenticated
-  if (!isAuthenticated) {
-    return null;
+  }, [token, hasHydrated, router]);
+  if (!hasHydrated) {
+    return (
+      <div className='flex h-screen items-center justify-center bg-gray-50'>
+        <LoadingSpinner text='Loading...' />
+      </div>
+    );
   }
+  // Don't render dashboard content until authenticated
+  if (!token) return null;
   return (
     <div className='flex flex-col h-screen bg-gray-50'>
       <Header />

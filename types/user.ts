@@ -23,8 +23,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  access_token: string;
+  token_type: string;
   user: User;
-  token: string;
   refreshToken?: string;
   expiresIn?: number;
 }
