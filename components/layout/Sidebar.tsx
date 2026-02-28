@@ -67,7 +67,7 @@ const navItems = [
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    roles: ['admin'] as Role[], // admin only
+    roles: ['admin'] as Role[],
   },
 ];
 
@@ -75,9 +75,14 @@ export function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const pathname = usePathname();
+
+  // FIX: user.roles is an array — check if ANY of the user's roles
+  // are in the item's allowed roles. Previously used user.role (singular)
+  // which doesn't exist on the User type, causing visibleItems to be empty.
   const visibleItems = navItems.filter(
-    item => user && item.roles.includes(user.role as Role),
+    item => user && user.roles.some(r => item.roles.includes(r as Role)),
   );
+
   return (
     <>
       {/* Mobile overlay */}
