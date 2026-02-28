@@ -8,30 +8,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useLogout } from '@/hooks/queries/useLogout';
 import { getInitials } from '@/lib/helpers';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { LogOut, Menu, Settings, User } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export function Header() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { toggleSidebar } = useUIStore();
-  const router = useRouter();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  // API returns full_name — use directly
+  const fullName = user?.full_name ?? '';
 
-  // Derive full name from snake_case fields
-  const fullName = user ? `${user.first_name} ${user.last_name}` : '';
+  // API returns roles[] array — show first role
+  const primaryRole = user?.roles?.[0] ?? '';
 
   return (
     <header className='sticky top-0 z-30 border-b border-gray-200 bg-white'>
       <div className='flex h-16 items-center justify-between px-4 lg:px-6'>
-        {/* Left section - Sidebar toggle + Logo */}
+        {/* Left — sidebar toggle + logo */}
         <div className='flex items-center gap-4'>
           <Button
             variant='ghost'
@@ -50,21 +48,21 @@ export function Header() {
             </h1>
           </div>
         </div>
-        {/* Right section - User menu */}
+        {/* Right — user dropdown */}
         <div className='flex items-center gap-4'>
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant='ghost' size='sm' className='flex gap-2'>
                   <div className='h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs'>
-                    {getInitials(fullName)} {/* ✅ derived fullName */}
+                    {getInitials(fullName)}
                   </div>
                   <div className='hidden sm:block text-left'>
                     <p className='text-sm font-medium text-gray-900'>
-                      {user.first_name} {/* ✅ was user.firstName */}
+                      {fullName}
                     </p>
                     <p className='text-xs text-gray-500 capitalize'>
-                      {user.role}
+                      {primaryRole}
                     </p>
                   </div>
                 </Button>
@@ -72,7 +70,7 @@ export function Header() {
               <DropdownMenuContent align='end' className='w-56'>
                 <div className='px-2 py-1.5'>
                   <p className='text-sm font-medium text-gray-900'>
-                    {fullName} {/* ✅ was user.fullName */}
+                    {fullName}
                   </p>
                   <p className='text-xs text-gray-500'>{user.email}</p>
                 </div>
@@ -91,11 +89,12 @@ export function Header() {
                 </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={handleLogout}
+                  onClick={() => logout()}
+                  disabled={isLoggingOut}
                   className='text-red-600'
                 >
                   <LogOut className='mr-2 h-4 w-4' />
-                  <span>Logout</span>
+                  <span>{isLoggingOut ? 'Signing out...' : 'Logout'}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

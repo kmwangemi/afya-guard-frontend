@@ -2,7 +2,6 @@
 
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -26,7 +25,6 @@ export default function LoginPage() {
     defaultValues: {
       username: '',
       password: '',
-      rememberMe: true,
     },
   });
   const onSubmit = (values: LoginFormValues) => login(values); // onSuccess/onError handled inside the hook
@@ -39,7 +37,7 @@ export default function LoginPage() {
             <span className='text-white font-bold text-lg'>SHA</span>
           </div>
           <h1 className='text-3xl font-bold text-gray-900 mb-2'>
-            SHA Fraud Detection
+            Fraud Intelligence Engine
           </h1>
           <p className='text-gray-600'>Healthcare Fraud Detection System</p>
         </div>
@@ -97,29 +95,6 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              {/* Remember Me */}
-              {/* <FormField
-                control={form.control}
-                name='rememberMe'
-                render={({ field }) => (
-                  <FormItem>
-                    <div className='flex items-center space-x-2'>
-                      <Checkbox
-                        id='rememberMe'
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isPending}
-                      />
-                      <label
-                        htmlFor='rememberMe'
-                        className='text-sm font-medium text-gray-700 cursor-pointer'
-                      >
-                        Remember me
-                      </label>
-                    </div>
-                  </FormItem>
-                )}
-              /> */}
               {/* Submit Button */}
               <Button
                 type='submit'
@@ -138,7 +113,7 @@ export default function LoginPage() {
             </form>
           </Form>
           {/* Forgot Password Link */}
-          <div className='mt-6 text-center'>
+          <div className='my-2 text-center'>
             <a
               href='#'
               className='text-sm text-blue-600 hover:text-blue-700 font-medium'
@@ -146,10 +121,24 @@ export default function LoginPage() {
               Forgot your password?
             </a>
           </div>
+          {/* Demo Credentials */}
+          <div className='bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1 text-xs'>
+            <p className='font-medium text-blue-900'>Demo Credentials:</p>
+            <p className='text-blue-800'>
+              Username:{' '}
+              <span className='font-mono font-semibold'>
+                admin@afyaguard.go.ke
+              </span>
+            </p>
+            <p className='text-blue-800'>
+              Password:{' '}
+              <span className='font-mono font-semibold'>AfyaGuard@2026!</span>
+            </p>
+          </div>
         </div>
         {/* Footer */}
         <p className='mt-8 text-center text-sm text-gray-600'>
-          SHA Fraud Detection System v1.0
+          SHA Fraud Intelligence Engine v1.0
         </p>
       </div>
     </div>

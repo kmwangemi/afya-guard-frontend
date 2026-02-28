@@ -4,8 +4,8 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { formatDateTime } from '@/lib/helpers';
-import { capitalizeFirstLetter, firstLetter } from '@/lib/utils';
+import { useLogout } from '@/hooks/queries/useLogout';
+import { capitalizeFirstLetter } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Briefcase,
@@ -18,30 +18,19 @@ import {
   Shield,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { logout, user } = useAuthStore();
+  const { user } = useAuthStore();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
 
-  // const user = {
-  //   id: "usr_001",
-  //   firstName: "John",
-  //   lastName: "Omondi",
-  //   email: "john.omondi@sha.gov.ke",
-  //   phone: "+254 712 345 678",
-  //   role: "Fraud Detection Officer",
-  //   department: "Fraud Detection Division",
-  //   status: "Active",
-  //   joinDate: new Date("2023-06-15"),
-  //   lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  //   avatar: "JO",
-  // };
+  // API returns full_name — split for display only
+  const fullName = user?.full_name ?? '';
+  const nameParts = fullName.trim().split(' ');
+  const firstName = nameParts[0] ?? '';
+  const lastName = nameParts.slice(1).join(' ') ?? '';
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
+  // API returns roles[] — show first role
+  const primaryRole = user?.roles?.[0] ?? '';
 
   const stats = [
     { label: 'Cases Investigated', value: '47' },
@@ -57,21 +46,33 @@ export default function ProfilePage() {
         <Card className='p-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'>
           <div className='flex items-start justify-between'>
             <div className='flex items-center gap-6'>
+              {/* Avatar — initials fallback if no picture */}
               <div className='h-20 w-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg'>
-                {user?.profile_picture_url}
+                {user?.full_name
+                  ? user.full_name
+                      .trim()
+                      .split(' ')
+                      .map(n => n[0])
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2)
+                  : '??'}
               </div>
               <div>
                 <h1 className='text-3xl font-bold text-gray-900'>
-                  {capitalizeFirstLetter(user?.first_name ?? '')} {''}
-                  {capitalizeFirstLetter(user?.last_name ?? '')}
+                  {capitalizeFirstLetter(firstName)}{' '}
+                  {capitalizeFirstLetter(lastName)}
                 </h1>
                 <p className='text-lg text-gray-600 mt-1'>
-                  {capitalizeFirstLetter(user?.role ?? '')}
+                  {capitalizeFirstLetter(primaryRole)}
                 </p>
                 <div className='flex items-center gap-2 mt-2'>
-                  <Badge className='bg-green-100 text-green-800'>
-                    {/* {user.status} */}
-                  </Badge>
+                  <Badge className='bg-green-100 text-green-800'>Active</Badge>
+                  {user?.is_superuser && (
+                    <Badge className='bg-purple-100 text-purple-800'>
+                      Superuser
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -83,11 +84,12 @@ export default function ProfilePage() {
                 </Button>
               </Link>
               <Button
-                onClick={handleLogout}
+                onClick={() => logout()}
+                disabled={isLoggingOut}
                 className='bg-red-600 hover:bg-red-700'
               >
                 <LogOut className='h-4 w-4 mr-2' />
-                Logout
+                {isLoggingOut ? 'Signing out...' : 'Logout'}
               </Button>
             </div>
           </div>
@@ -113,9 +115,8 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className='text-sm text-gray-600'>Phone</p>
-                <p className='font-medium text-gray-900'>
-                  {user?.phone_number}
-                </p>
+                {/* phone_number not in API response — show fallback */}
+                <p className='font-medium text-gray-400 italic'>Not provided</p>
               </div>
             </div>
             <div className='flex items-center gap-4'>
@@ -124,9 +125,8 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className='text-sm text-gray-600'>Department</p>
-                <p className='font-medium text-gray-900'>
-                  {/* {user.department} */}
-                </p>
+                {/* department not in API response — show fallback */}
+                <p className='font-medium text-gray-400 italic'>Not provided</p>
               </div>
             </div>
             <div className='flex items-center gap-4'>
@@ -136,13 +136,13 @@ export default function ProfilePage() {
               <div>
                 <p className='text-sm text-gray-600'>Role</p>
                 <p className='font-medium text-gray-900'>
-                  {capitalizeFirstLetter(user?.role ?? '')}
+                  {capitalizeFirstLetter(primaryRole)}
                 </p>
               </div>
             </div>
           </div>
         </Card>
-        {/* Activity Information */}
+        {/* Account Activity */}
         <Card className='p-6'>
           <h2 className='text-xl font-semibold text-gray-900 mb-6'>
             Account Activity
@@ -153,7 +153,8 @@ export default function ProfilePage() {
               <div>
                 <p className='text-sm text-gray-600'>Member Since</p>
                 <p className='font-medium text-gray-900'>
-                  {formatDateTime(user?.created_at ?? new Date())}
+                  {/* created_at not in login response — show fallback */}
+                  Not available
                 </p>
               </div>
             </div>
@@ -162,7 +163,8 @@ export default function ProfilePage() {
               <div>
                 <p className='text-sm text-gray-600'>Last Login</p>
                 <p className='font-medium text-gray-900'>
-                  {formatDateTime(user?.created_at ?? new Date())}
+                  {/* last_login not in login response — show fallback */}
+                  Not available
                 </p>
               </div>
             </div>
@@ -188,18 +190,19 @@ export default function ProfilePage() {
         {/* Security */}
         <Card className='p-6 border-red-200'>
           <h2 className='text-xl font-semibold text-gray-900 mb-4'>
-            Security & Logout
+            Security &amp; Logout
           </h2>
           <p className='text-gray-600 mb-4'>
             Click the logout button to securely end your session and return to
             the login page.
           </p>
           <Button
-            onClick={handleLogout}
+            onClick={() => logout()}
+            disabled={isLoggingOut}
             className='bg-red-600 hover:bg-red-700'
           >
             <LogOut className='h-4 w-4 mr-2' />
-            Logout from All Devices
+            {isLoggingOut ? 'Signing out...' : 'Logout from All Devices'}
           </Button>
         </Card>
       </div>
