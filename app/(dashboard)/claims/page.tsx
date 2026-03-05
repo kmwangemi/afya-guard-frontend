@@ -1,30 +1,33 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ClaimFilters } from '@/components/claims/ClaimFilters';
 import { ClaimsTable } from '@/components/claims/ClaimsTable';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Claim, ClaimFilterParams } from '@/types/claim';
 import { useClaims } from '@/hooks/queries/useClaims';
-import { claimsService } from '@/services/claimsService';
-import { Download, FileText, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { claimsService } from '@/services/claimsService';
+import { ClaimFilterParams } from '@/types/claim';
+import { useQueryClient } from '@tanstack/react-query';
+import { Download, FileText, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 export default function ClaimsPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize] = useState(25);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filters, setFilters] = useState<ClaimFilterParams>({});
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -38,8 +41,10 @@ export default function ClaimsPage() {
     error,
   } = useClaims(filters, page, pageSize);
 
+  // Fix 1: removed `page: undefined` spread — ClaimFilterParams has no page field
+  //         and it caused a TypeScript error. Resetting page is handled separately.
   const handleFilter = (newFilters: Partial<ClaimFilterParams>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: undefined }));
+    setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };
 
@@ -62,7 +67,7 @@ export default function ClaimsPage() {
         description: 'Your file will download shortly.',
       });
     } catch (err) {
-      console.error('[claims] Export error:', err);
+      console.error('[claims] export error:', err);
       toast({
         title: 'Export failed',
         description: 'Could not export claims.',
@@ -90,6 +95,11 @@ export default function ClaimsPage() {
     setUploadedFile(file);
   };
 
+  const resetUploadDialog = () => {
+    setUploadedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleUploadSubmit = async () => {
     if (!uploadedFile) {
       toast({
@@ -104,13 +114,14 @@ export default function ClaimsPage() {
       const result = await claimsService.uploadClaims(uploadedFile);
       toast({
         title: 'Upload successful',
-        description: `${uploadedFile.name} imported successfully — ${result.imported} claim(s) added.`,
+        description: `${uploadedFile.name} imported — ${result.imported} claim(s) added.`,
       });
       setUploadDialogOpen(false);
-      setUploadedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      resetUploadDialog();
+      // Fix 2: invalidate the list so newly imported claims appear immediately
+      queryClient.invalidateQueries({ queryKey: ['claims', 'list'] });
     } catch (err) {
-      console.error('[claims] Upload error:', err);
+      console.error('[claims] upload error:', err);
       toast({
         title: 'Upload failed',
         description: 'Could not process the file.',
@@ -157,7 +168,7 @@ export default function ClaimsPage() {
         <ClaimFilters onFilter={handleFilter} onReset={handleReset} />
         {/* Table */}
         <ClaimsTable
-          claims={claimsResponse?.data || []}
+          claims={claimsResponse?.data ?? []}
           onSelectionChange={setSelectedIds}
           isLoading={isLoading}
         />
@@ -172,7 +183,13 @@ export default function ClaimsPage() {
           />
         )}
         {/* Upload Dialog */}
-        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <Dialog
+          open={uploadDialogOpen}
+          onOpenChange={open => {
+            setUploadDialogOpen(open);
+            if (!open) resetUploadDialog(); // clear file when dialog is dismissed
+          }}
+        >
           <DialogContent className='max-w-2xl'>
             <DialogHeader>
               <DialogTitle>Upload Claims File</DialogTitle>
@@ -202,11 +219,7 @@ export default function ClaimsPage() {
                     <Button
                       variant='ghost'
                       size='sm'
-                      onClick={() => {
-                        setUploadedFile(null);
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = '';
-                      }}
+                      onClick={resetUploadDialog}
                       className='mt-2 text-blue-600 hover:text-blue-700'
                     >
                       Change File
@@ -245,8 +258,7 @@ export default function ClaimsPage() {
                 variant='outline'
                 onClick={() => {
                   setUploadDialogOpen(false);
-                  setUploadedFile(null);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  resetUploadDialog();
                 }}
                 disabled={isProcessing}
               >
