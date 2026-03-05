@@ -6,9 +6,13 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
-  roles: UserRole[];
+  phone?: string | null;
+  is_active: boolean;
   is_superuser: boolean;
+  last_login_at: string;
   must_change_password: boolean;
+  department?: string | null;
+  roles: UserRole[];
 }
 
 export interface LoginRequest {

@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ClaimFilters } from '@/components/claims/ClaimFilters';
 import { ClaimsTable } from '@/components/claims/ClaimsTable';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Claim, ClaimFilterParams } from '@/types/claim';
-import { useClaims } from '@/hooks/queries/useClaims';
-import { claimsService } from '@/services/claimsService';
-import { Download, FileText, Upload } from 'lucide-react';
+import { useClaims } from '@/hooks/queries/useClaims original';
 import { useToast } from '@/hooks/use-toast';
+import { mockClaimsService } from '@/services/mockClaimsService';
+import { ClaimFilterParams } from '@/types/claim';
+import { Download, FileText, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 export default function ClaimsPage() {
   const { toast } = useToast();
@@ -31,15 +31,17 @@ export default function ClaimsPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const {
-    data: claimsResponse,
-    isLoading,
-    isError,
-    error,
-  } = useClaims(filters, page, pageSize);
+  // Use React Query hook for claims data
+  const { data: claimsResponse, isLoading } = useClaims(
+    filters,
+    page,
+    pageSize,
+  );
 
   const handleFilter = (newFilters: Partial<ClaimFilterParams>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: undefined }));
+    const updatedFilters = { ...filters, ...newFilters };
+    delete updatedFilters.page; // Reset to page 1 when filtering
+    setFilters(updatedFilters);
     setPage(1);
   };
 
@@ -50,70 +52,64 @@ export default function ClaimsPage() {
 
   const handleExport = async () => {
     try {
-      const blob = await claimsService.exportClaims('csv');
+      const blob = await mockClaimsService.exportClaims('csv');
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `claims-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast({
-        title: 'Export started',
-        description: 'Your file will download shortly.',
-      });
-    } catch (err) {
-      console.error('[claims] Export error:', err);
-      toast({
-        title: 'Export failed',
-        description: 'Could not export claims.',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      console.error('[v0] Error exporting claims:', error);
     }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-    const allowed = [
-      'text/csv',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
-    if (!allowed.includes(file.type)) {
-      toast({
-        title: 'Invalid file',
-        description: 'Please upload a CSV or Excel file.',
-        variant: 'destructive',
-      });
-      return;
+    if (file) {
+      if (
+        ![
+          'text/csv',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ].includes(file.type)
+      ) {
+        toast({
+          title: 'Error',
+          description: 'Please upload a CSV or Excel file',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setUploadedFile(file);
     }
-    setUploadedFile(file);
   };
 
   const handleUploadSubmit = async () => {
     if (!uploadedFile) {
       toast({
-        title: 'No file selected',
-        description: 'Please select a file to upload.',
+        title: 'Error',
+        description: 'Please select a file to upload',
         variant: 'destructive',
       });
       return;
     }
     setIsProcessing(true);
     try {
-      const result = await claimsService.uploadClaims(uploadedFile);
+      // Simulate file processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
       toast({
-        title: 'Upload successful',
-        description: `${uploadedFile.name} imported successfully — ${result.imported} claim(s) added.`,
+        title: 'Success',
+        description: `Processed ${uploadedFile.name}. Claims data extracted and imported successfully.`,
       });
       setUploadDialogOpen(false);
       setUploadedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err) {
-      console.error('[claims] Upload error:', err);
+    } catch (error) {
+      console.error('[v0] Error uploading file:', error);
       toast({
-        title: 'Upload failed',
-        description: 'Could not process the file.',
+        title: 'Error',
+        description: 'Failed to process the file',
         variant: 'destructive',
       });
     } finally {
@@ -146,13 +142,6 @@ export default function ClaimsPage() {
             </Button>
           </div>
         </div>
-        {/* Error state */}
-        {isError && (
-          <div className='rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-800'>
-            Failed to load claims:{' '}
-            {(error as Error)?.message ?? 'Unknown error'}
-          </div>
-        )}
         {/* Filters */}
         <ClaimFilters onFilter={handleFilter} onReset={handleReset} />
         {/* Table */}
@@ -171,7 +160,7 @@ export default function ClaimsPage() {
             pageSize={pageSize}
           />
         )}
-        {/* Upload Dialog */}
+        {/* Upload Claims Dialog */}
         <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
           <DialogContent className='max-w-2xl'>
             <DialogHeader>

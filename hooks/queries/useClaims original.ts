@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { claimsService } from '@/services/claimsService';
-import { ClaimFilterParams } from '@/types/claim';
+import { mockClaimsService } from '@/services/mockClaimsService';
+import { Claim, ClaimFilterParams } from '@/types/claim';
 
 const CLAIMS_QUERY_KEY = 'claims';
 
@@ -10,11 +10,11 @@ const CLAIMS_QUERY_KEY = 'claims';
 export function useClaims(
   filters: ClaimFilterParams = {},
   page: number = 1,
-  pageSize: number = 25,
+  pageSize: number = 25
 ) {
   return useQuery({
     queryKey: [CLAIMS_QUERY_KEY, filters, page, pageSize],
-    queryFn: () => claimsService.getClaims(filters, page, pageSize),
+    queryFn: () => mockClaimsService.getClaims(filters, page, pageSize),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -25,7 +25,7 @@ export function useClaims(
 export function useClaimById(claimId: string) {
   return useQuery({
     queryKey: [CLAIMS_QUERY_KEY, claimId],
-    queryFn: () => claimsService.getClaimById(claimId),
+    queryFn: () => mockClaimsService.getClaimById(claimId),
     staleTime: 5 * 60 * 1000,
     enabled: !!claimId,
   });
@@ -37,7 +37,7 @@ export function useClaimById(claimId: string) {
 export function useClaimAnalysis(claimId: string) {
   return useQuery({
     queryKey: [CLAIMS_QUERY_KEY, claimId, 'analysis'],
-    queryFn: () => claimsService.getClaimAnalysis(claimId),
+    queryFn: () => mockClaimsService.getClaimAnalysis(claimId),
     staleTime: 10 * 60 * 1000,
     enabled: !!claimId,
   });
@@ -48,9 +48,10 @@ export function useClaimAnalysis(claimId: string) {
  */
 export function useApproveClaim() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ claimId, notes }: { claimId: string; notes?: string }) =>
-      claimsService.approveClaim(claimId, notes),
+      mockClaimsService.approveClaim(claimId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
     },
@@ -62,9 +63,10 @@ export function useApproveClaim() {
  */
 export function useRejectClaim() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ claimId, reason }: { claimId: string; reason: string }) =>
-      claimsService.rejectClaim(claimId, reason),
+      mockClaimsService.rejectClaim(claimId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
     },
@@ -76,14 +78,10 @@ export function useRejectClaim() {
  */
 export function useFlagClaimForInvestigation() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
-      claimId,
-      investigationType,
-    }: {
-      claimId: string;
-      investigationType: string;
-    }) => claimsService.flagForInvestigation(claimId, investigationType),
+    mutationFn: ({ claimId, investigationType }: { claimId: string; investigationType: string }) =>
+      mockClaimsService.flagForInvestigation(claimId, investigationType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
     },
@@ -95,6 +93,7 @@ export function useFlagClaimForInvestigation() {
  */
 export function useAssignClaimToInvestigator() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({
       claimId,
@@ -105,11 +104,7 @@ export function useAssignClaimToInvestigator() {
       investigatorId: string;
       investigatorName: string;
     }) =>
-      claimsService.assignInvestigator(
-        claimId,
-        investigatorId,
-        investigatorName,
-      ),
+      mockClaimsService.assignInvestigator(claimId, investigatorId, investigatorName),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
     },

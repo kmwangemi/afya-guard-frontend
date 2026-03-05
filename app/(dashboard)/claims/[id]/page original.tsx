@@ -22,7 +22,7 @@ import {
   useClaimById,
   useFlagClaimForInvestigation,
   useRejectClaim,
-} from '@/hooks/queries/useClaims';
+} from '@/hooks/queries/useClaims original';
 import {
   formatCurrency,
   formatDate,
@@ -37,11 +37,12 @@ import {
   Share2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function ClaimDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const claimId = params.id as string;
 
   const [showActionModal, setShowActionModal] = useState<
@@ -53,7 +54,8 @@ export default function ClaimDetailPage() {
   const [shareEmail, setShareEmail] = useState('');
 
   const { data: claim, isLoading: claimLoading } = useClaimById(claimId);
-  const { data: analysis, isLoading: analysisLoading } = useClaimAnalysis(claimId);
+  const { data: analysis, isLoading: analysisLoading } =
+    useClaimAnalysis(claimId);
   const approveClaim = useApproveClaim();
   const rejectClaim = useRejectClaim();
   const flagForInvestigation = useFlagClaimForInvestigation();
@@ -67,7 +69,7 @@ export default function ClaimDetailPage() {
       setShowActionModal(null);
       setActionNotes('');
     } catch (error) {
-      console.error('[claims] Error approving claim:', error);
+      console.error('[v0] Error approving claim:', error);
     }
   };
 
@@ -77,7 +79,7 @@ export default function ClaimDetailPage() {
       setShowActionModal(null);
       setActionNotes('');
     } catch (error) {
-      console.error('[claims] Error rejecting claim:', error);
+      console.error('[v0] Error rejecting claim:', error);
     }
   };
 
@@ -87,7 +89,7 @@ export default function ClaimDetailPage() {
       setShowActionModal(null);
       setInvestigationType('suspected_fraud');
     } catch (error) {
-      console.error('[claims] Error flagging claim:', error);
+      console.error('[v0] Error flagging claim:', error);
     }
   };
 
@@ -102,7 +104,7 @@ export default function ClaimDetailPage() {
       setShowActionModal(null);
       setSelectedInvestigator('');
     } catch (error) {
-      console.error('[claims] Error assigning claim:', error);
+      console.error('[v0] Error assigning claim:', error);
     }
   };
 
@@ -118,6 +120,7 @@ export default function ClaimDetailPage() {
       createdAt: claim.createdAt,
       lastUpdated: claim.updatedAt,
     };
+
     const dataStr = JSON.stringify(claimData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -130,9 +133,7 @@ export default function ClaimDetailPage() {
 
   const handleShareClaim = () => {
     if (!shareEmail.trim()) return;
-    // TODO: wire up share API
-    console.log('[claims] Sharing claim to:', shareEmail);
-    setShowActionModal(null);
+    console.log('[v0] Sharing claim to:', shareEmail);
     setShareEmail('');
   };
 
@@ -151,7 +152,9 @@ export default function ClaimDetailPage() {
       <DashboardLayout>
         <div className='text-center py-12'>
           <AlertCircle className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-          <h3 className='text-lg font-semibold text-gray-900'>Claim not found</h3>
+          <h3 className='text-lg font-semibold text-gray-900'>
+            Claim not found
+          </h3>
         </div>
       </DashboardLayout>
     );
@@ -177,10 +180,6 @@ export default function ClaimDetailPage() {
             <ChevronLeft className='h-4 w-4 mr-1' />
             Back to Claims
           </Link>
-          <div>
-            <h1 className='text-3xl font-bold text-gray-900'>{claim.claimNumber}</h1>
-            <p className='text-gray-600 mt-1'>{claim.providerName}</p>
-          </div>
           <div className='flex gap-2'>
             <Button variant='outline' size='sm' onClick={handleDownloadClaim}>
               <Download className='h-4 w-4 mr-1' />
@@ -189,10 +188,26 @@ export default function ClaimDetailPage() {
             <Button
               variant='outline'
               size='sm'
-              onClick={() => setShowActionModal('share')}
+              onClick={() => setShowActionModal('share' as any)}
             >
               <Share2 className='h-4 w-4 mr-1' />
               Share
+            </Button>
+          </div>
+          <div>
+            <h1 className='text-3xl font-bold text-gray-900'>
+              {claim.claimNumber}
+            </h1>
+            <p className='text-gray-600 mt-1'>{claim.providerName}</p>
+          </div>
+          <div className='flex gap-2'>
+            <Button variant='outline'>
+              <Share2 className='h-4 w-4 mr-2' />
+              Share
+            </Button>
+            <Button variant='outline'>
+              <Download className='h-4 w-4 mr-2' />
+              Download
             </Button>
           </div>
         </div>
@@ -233,7 +248,9 @@ export default function ClaimDetailPage() {
               <div className='grid grid-cols-2 gap-4'>
                 <div>
                   <p className='text-sm text-gray-600'>Patient ID (Masked)</p>
-                  <p className='font-mono text-gray-900'>{maskPatientId(claim.patientId)}</p>
+                  <p className='font-mono text-gray-900'>
+                    {maskPatientId(claim.patientId)}
+                  </p>
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Provider ID</p>
@@ -250,7 +267,7 @@ export default function ClaimDetailPage() {
                 <div>
                   <p className='text-sm text-gray-600'>Service Date Range</p>
                   <p className='text-gray-900'>
-                    {formatDate(claim.serviceDateStart)} –{' '}
+                    {formatDate(claim.serviceDateStart)} -{' '}
                     {formatDate(claim.serviceDateEnd)}
                   </p>
                 </div>
@@ -275,17 +292,27 @@ export default function ClaimDetailPage() {
                     >
                       <div className='flex items-start justify-between mb-2'>
                         <div>
-                          <p className='font-semibold text-gray-900'>{flag.type}</p>
-                          <p className='text-sm text-gray-600'>{flag.description}</p>
+                          <p className='font-semibold text-gray-900'>
+                            {flag.type}
+                          </p>
+                          <p className='text-sm text-gray-600'>
+                            {flag.description}
+                          </p>
                         </div>
                         <Badge
-                          variant={flag.severity === 'critical' ? 'destructive' : 'secondary'}
+                          variant={
+                            flag.severity === 'critical'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
                         >
                           {flag.severity}
                         </Badge>
                       </div>
                       {flag.evidence && (
-                        <p className='text-xs text-gray-600 mt-2'>{flag.evidence}</p>
+                        <p className='text-xs text-gray-600 mt-2'>
+                          {flag.evidence}
+                        </p>
                       )}
                       <p className='text-xs text-gray-500 mt-2'>
                         {formatDateTime(flag.timestamp)}
@@ -301,7 +328,7 @@ export default function ClaimDetailPage() {
                 <h3 className='text-lg font-semibold text-gray-900 mb-4'>
                   Fraud Analysis
                 </h3>
-                {/* Phantom Patient */}
+                {/* Phantom Patient Analysis */}
                 <div className='mb-6'>
                   <h4 className='font-medium text-gray-900 mb-3 flex items-center gap-2'>
                     {analysis.phantomPatient.iprsFlag ? (
@@ -321,12 +348,16 @@ export default function ClaimDetailPage() {
                       {analysis.phantomPatient.geographicAnomaly ? 'Yes' : 'No'}
                     </p>
                     <p>
-                      <span className='font-medium'>Visit Frequency Anomaly:</span>{' '}
-                      {analysis.phantomPatient.visitFrequencyAnomaly ? 'Yes' : 'No'}
+                      <span className='font-medium'>
+                        Visit Frequency Anomaly:
+                      </span>{' '}
+                      {analysis.phantomPatient.visitFrequencyAnomaly
+                        ? 'Yes'
+                        : 'No'}
                     </p>
                   </div>
                 </div>
-                {/* Upcoding */}
+                {/* Upcoding Analysis */}
                 <div className='mb-6'>
                   <h4 className='font-medium text-gray-900 mb-3 flex items-center gap-2'>
                     {analysis.upcoding.detected ? (
@@ -353,7 +384,9 @@ export default function ClaimDetailPage() {
                 </div>
                 {/* Duplicate Detection */}
                 <div>
-                  <h4 className='font-medium text-gray-900 mb-3'>Duplicate Detection</h4>
+                  <h4 className='font-medium text-gray-900 mb-3'>
+                    Duplicate Detection
+                  </h4>
                   <div className='bg-gray-50 p-4 rounded-lg space-y-2 text-sm'>
                     <p>
                       <span className='font-medium'>Exact Matches:</span>{' '}
@@ -372,7 +405,9 @@ export default function ClaimDetailPage() {
           <div className='space-y-6'>
             {/* Quick Actions */}
             <Card className='p-6'>
-              <h3 className='text-lg font-semibold text-gray-900 mb-4'>Actions</h3>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Actions
+              </h3>
               <div className='space-y-2'>
                 <Button
                   onClick={() => setShowActionModal('approve')}
@@ -408,10 +443,12 @@ export default function ClaimDetailPage() {
                 </Button>
               </div>
             </Card>
-            {/* Approve Modal */}
+            {/* Action Modals */}
             {showActionModal === 'approve' && (
               <Card className='p-6 border-green-200 bg-green-50'>
-                <h4 className='font-semibold text-green-900 mb-3'>Approve Claim</h4>
+                <h4 className='font-semibold text-green-900 mb-3'>
+                  Approve Claim
+                </h4>
                 <Textarea
                   placeholder='Add approval notes (optional)...'
                   value={actionNotes}
@@ -425,10 +462,13 @@ export default function ClaimDetailPage() {
                     disabled={approveClaim.isPending}
                     className='flex-1 bg-green-600 hover:bg-green-700'
                   >
-                    {approveClaim.isPending ? 'Approving...' : 'Confirm Approval'}
+                    Confirm Approval
                   </Button>
                   <Button
-                    onClick={() => { setShowActionModal(null); setActionNotes(''); }}
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setActionNotes('');
+                    }}
                     variant='outline'
                     className='flex-1'
                   >
@@ -437,10 +477,11 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-            {/* Reject Modal */}
             {showActionModal === 'reject' && (
               <Card className='p-6 border-red-200 bg-red-50'>
-                <h4 className='font-semibold text-red-900 mb-3'>Reject Claim</h4>
+                <h4 className='font-semibold text-red-900 mb-3'>
+                  Reject Claim
+                </h4>
                 <Textarea
                   placeholder='Provide rejection reason...'
                   value={actionNotes}
@@ -454,10 +495,13 @@ export default function ClaimDetailPage() {
                     disabled={rejectClaim.isPending || !actionNotes}
                     className='flex-1 bg-red-600 hover:bg-red-700'
                   >
-                    {rejectClaim.isPending ? 'Rejecting...' : 'Confirm Rejection'}
+                    Confirm Rejection
                   </Button>
                   <Button
-                    onClick={() => { setShowActionModal(null); setActionNotes(''); }}
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setActionNotes('');
+                    }}
                     variant='outline'
                     className='flex-1'
                   >
@@ -466,17 +510,25 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-            {/* Investigate Modal */}
             {showActionModal === 'investigate' && (
               <Card className='p-6 border-blue-200 bg-blue-50'>
-                <h4 className='font-semibold text-blue-900 mb-3'>Create Investigation</h4>
-                <Select value={investigationType} onValueChange={setInvestigationType}>
+                <h4 className='font-semibold text-blue-900 mb-3'>
+                  Create Investigation
+                </h4>
+                <Select
+                  value={investigationType}
+                  onValueChange={setInvestigationType}
+                >
                   <SelectTrigger className='mb-3'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='suspected_fraud'>Suspected Fraud</SelectItem>
-                    <SelectItem value='phantom_patient'>Phantom Patient</SelectItem>
+                    <SelectItem value='suspected_fraud'>
+                      Suspected Fraud
+                    </SelectItem>
+                    <SelectItem value='phantom_patient'>
+                      Phantom Patient
+                    </SelectItem>
                     <SelectItem value='upcoding'>Upcoding</SelectItem>
                     <SelectItem value='duplicate'>Duplicate Claim</SelectItem>
                   </SelectContent>
@@ -487,10 +539,13 @@ export default function ClaimDetailPage() {
                     disabled={flagForInvestigation.isPending}
                     className='flex-1 bg-blue-600 hover:bg-blue-700'
                   >
-                    {flagForInvestigation.isPending ? 'Creating...' : 'Create Investigation'}
+                    Create Investigation
                   </Button>
                   <Button
-                    onClick={() => { setShowActionModal(null); setInvestigationType('suspected_fraud'); }}
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setInvestigationType('suspected_fraud');
+                    }}
                     variant='outline'
                     className='flex-1'
                   >
@@ -499,30 +554,41 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-            {/* Assign Modal */}
             {showActionModal === 'assign' && (
               <Card className='p-6 border-purple-200 bg-purple-50'>
-                <h4 className='font-semibold text-purple-900 mb-3'>Assign Investigator</h4>
-                <Select value={selectedInvestigator} onValueChange={setSelectedInvestigator}>
+                <h4 className='font-semibold text-purple-900 mb-3'>
+                  Assign Investigator
+                </h4>
+                <Select
+                  value={selectedInvestigator}
+                  onValueChange={setSelectedInvestigator}
+                >
                   <SelectTrigger className='mb-3'>
                     <SelectValue placeholder='Select investigator' />
                   </SelectTrigger>
                   <SelectContent>
                     {investigators.map(inv => (
-                      <SelectItem key={inv} value={inv}>{inv}</SelectItem>
+                      <SelectItem key={inv} value={inv}>
+                        {inv}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <div className='flex gap-2'>
                   <Button
                     onClick={handleAssignInvestigator}
-                    disabled={assignToInvestigator.isPending || !selectedInvestigator}
+                    disabled={
+                      assignToInvestigator.isPending || !selectedInvestigator
+                    }
                     className='flex-1 bg-purple-600 hover:bg-purple-700'
                   >
-                    {assignToInvestigator.isPending ? 'Assigning...' : 'Assign'}
+                    Assign
                   </Button>
                   <Button
-                    onClick={() => { setShowActionModal(null); setSelectedInvestigator(''); }}
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setSelectedInvestigator('');
+                    }}
                     variant='outline'
                     className='flex-1'
                   >
@@ -531,12 +597,40 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-            {/* Share Modal */}
+            {/* Metadata */}
+            <Card className='p-6'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Details
+              </h3>
+              <div className='space-y-3 text-sm'>
+                <div>
+                  <p className='text-gray-600'>Submitted</p>
+                  <p className='font-medium text-gray-900'>
+                    {formatDateTime(claim.submittedAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-600'>Created</p>
+                  <p className='font-medium text-gray-900'>
+                    {formatDateTime(claim.createdAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-gray-600'>Last Updated</p>
+                  <p className='font-medium text-gray-900'>
+                    {formatDateTime(claim.updatedAt)}
+                  </p>
+                </div>
+              </div>
+            </Card>
             {showActionModal === 'share' && (
               <Card className='p-6 border-blue-200 bg-blue-50'>
-                <h4 className='font-semibold text-blue-900 mb-3'>Share Claim</h4>
+                <h4 className='font-semibold text-blue-900 mb-3'>
+                  Share Claim
+                </h4>
                 <p className='text-sm text-blue-800 mb-3'>
-                  Enter an email address to share this claim with a team member.
+                  Enter email address(es) to share this claim with other team
+                  members
                 </p>
                 <input
                   type='email'
@@ -554,7 +648,10 @@ export default function ClaimDetailPage() {
                     Share
                   </Button>
                   <Button
-                    onClick={() => { setShowActionModal(null); setShareEmail(''); }}
+                    onClick={() => {
+                      setShowActionModal(null);
+                      setShareEmail('');
+                    }}
                     variant='outline'
                     className='flex-1'
                   >
@@ -563,24 +660,6 @@ export default function ClaimDetailPage() {
                 </div>
               </Card>
             )}
-            {/* Metadata */}
-            <Card className='p-6'>
-              <h3 className='text-lg font-semibold text-gray-900 mb-4'>Details</h3>
-              <div className='space-y-3 text-sm'>
-                <div>
-                  <p className='text-gray-600'>Submitted</p>
-                  <p className='font-medium text-gray-900'>{formatDateTime(claim.submittedAt)}</p>
-                </div>
-                <div>
-                  <p className='text-gray-600'>Created</p>
-                  <p className='font-medium text-gray-900'>{formatDateTime(claim.createdAt)}</p>
-                </div>
-                <div>
-                  <p className='text-gray-600'>Last Updated</p>
-                  <p className='font-medium text-gray-900'>{formatDateTime(claim.updatedAt)}</p>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       </div>
