@@ -9,6 +9,7 @@ import {
   Bell,
   Building2,
   ChevronLeft,
+  ClipboardList,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -67,6 +68,12 @@ const navItems = [
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+    roles: ['admin'] as Role[],
+  },
+  {
+    title: 'Logs',
+    href: '/logs',
+    icon: ClipboardList,
     roles: ['admin'] as Role[],
   },
 ];

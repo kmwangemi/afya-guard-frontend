@@ -40,3 +40,63 @@ export interface AuthState {
   isLoading: boolean;
   error: string | null;
 }
+
+// ─── User / profile domain types ─────────────────────────────────────────────
+// Aligned to backend UserResponse, UserProfileUpdate, UserPerformanceStats
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  displayName: string | null;
+  description: string | null;
+  isSystemRole: boolean;
+  permissions: Permission[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Full profile — GET /users/me
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  isActive: boolean;
+  isSuperuser: boolean;
+  lastLoginAt: string | null;
+  mustChangePassword: boolean;
+  department: string | null;
+  roles: Role[];
+  createdAt: string; // Fix 2: IS returned by /users/profile via TimestampMixin
+  updatedAt: string;
+}
+
+// PATCH /users/profile — only full_name, phone, department are editable
+export interface UpdateProfilePayload {
+  fullName?: string;
+  phone?: string;
+  department?: string;
+}
+
+// GET /users/profile/stats — Fix 1: replaces hardcoded stat values
+export interface UserPerformanceStats {
+  casesInvestigated: number;
+  alertsReviewed: number;
+  fraudCasesConfirmed: number;
+  totalFraudAmountRecovered: number;
+  totalFraudAmountDisplay: string; // pre-formatted "KES 2.4M"
+}
+
+// PATCH /auth/password
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
