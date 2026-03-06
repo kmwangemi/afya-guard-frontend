@@ -2,16 +2,12 @@ export type UserRole = 'admin' | 'investigator' | 'analyst';
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 
-export interface User {
-  id: string;
+export interface UserLoginResponse {
   email: string;
   full_name: string;
-  phone?: string | null;
   is_active: boolean;
   is_superuser: boolean;
-  last_login_at: string;
   must_change_password: boolean;
-  department?: string | null;
   roles: UserRole[];
 }
 
@@ -29,11 +25,11 @@ export interface LoginTokens {
 
 export interface LoginResponse {
   tokens: LoginTokens;
-  user: User;
+  user: UserLoginResponse;
 }
 
 export interface AuthState {
-  user: User | null;
+  user: UserLoginResponse | null;
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;

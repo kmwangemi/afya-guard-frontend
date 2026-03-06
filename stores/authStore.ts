@@ -1,14 +1,14 @@
-import { User } from '@/types/user';
+import { UserLoginResponse } from '@/types/user';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface AuthState {
-  user: User | null;
+  user: UserLoginResponse | null;
   token: string | null;
   refreshToken: string | null;
   hasHydrated: boolean;
 
-  setUser: (user: User) => void;
+  setUser: (user: UserLoginResponse) => void;
   setToken: (token: string) => void;
   setRefreshToken: (token: string) => void;
   logout: () => void;

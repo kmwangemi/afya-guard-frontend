@@ -10,7 +10,7 @@ interface ApiLogEntry {
   action: string;
   entity_type: string | null;
   entity_id: string | null;
-  metadata: Record<string, unknown>;
+  audit_log_metadata: Record<string, unknown>;
   ip_address: string | null;
   user_agent: string | null;
   performed_at: string;
@@ -33,7 +33,7 @@ function mapEntry(a: ApiLogEntry): AuditLogEntry {
     action: a.action as AuditAction,
     entityType: a.entity_type,
     entityId: a.entity_id,
-    metadata: a.metadata ?? {},
+    metadata: a.audit_log_metadata ?? {},
     ipAddress: a.ip_address,
     userAgent: a.user_agent,
     performedAt: a.performed_at,

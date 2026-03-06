@@ -7,7 +7,7 @@ const LOGS_KEY = 'logs';
 export function useLogs(
   filters: LogFilterParams = {},
   page: number = 1,
-  pageSize: number = 50,
+  pageSize: number = 20,
 ) {
   return useQuery({
     queryKey: [LOGS_KEY, 'list', filters, page, pageSize],

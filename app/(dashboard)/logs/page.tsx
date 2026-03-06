@@ -126,19 +126,16 @@ const ENTITY_TYPES: AuditEntityType[] = [
 
 export default function LogsPage() {
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(50);
-
+  const [pageSize, setPageSize] = useState(25);
   const [filterAction, setFilterAction] = useState('');
   const [filterEntityType, setFilterEntityType] = useState('');
   const [filterUserId, setFilterUserId] = useState('');
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
-
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(
     null,
   );
   const [detailOpen, setDetailOpen] = useState(false);
-
   const filters: LogFilterParams = {};
   if (filterAction && filterAction !== 'all')
     filters.action = filterAction as AuditAction;
@@ -147,14 +144,12 @@ export default function LogsPage() {
   if (filterUserId.trim()) filters.userId = filterUserId.trim();
   if (filterFromDate) filters.fromDate = new Date(filterFromDate).toISOString();
   if (filterToDate) filters.toDate = new Date(filterToDate).toISOString();
-
   const {
     data: logsResponse,
     isLoading,
     refetch,
     isFetching,
   } = useLogs(filters, page, pageSize);
-
   const handleClearFilters = () => {
     setFilterAction('');
     setFilterEntityType('');
@@ -163,7 +158,6 @@ export default function LogsPage() {
     setFilterToDate('');
     setPage(1);
   };
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>
@@ -296,6 +290,19 @@ export default function LogsPage() {
               }}
               title='To date'
             />
+            <Select
+              value={String(pageSize)}
+              onValueChange={v => setPageSize(parseInt(v))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='10'>10 per page</SelectItem>
+                <SelectItem value='25'>25 per page</SelectItem>
+                <SelectItem value='50'>50 per page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           {(filterAction ||
             filterEntityType ||
