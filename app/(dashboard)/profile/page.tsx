@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useLogout } from '@/hooks/queries/useLogout';
+import { useLogout } from '@/hooks/queries/useAuth';
 import { capitalizeFirstLetter, formatToNewDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -22,8 +22,6 @@ import Link from 'next/link';
 export default function ProfilePage() {
   const { user } = useAuthStore();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
-
-  console.log('user---->', JSON.stringify(user));
 
   // API returns full_name — split for display only
   const fullName = user?.full_name ?? '';
@@ -167,7 +165,9 @@ export default function ProfilePage() {
               <div>
                 <p className='text-sm text-gray-600'>Last Login</p>
                 <p className='font-medium text-gray-900'>
-                  {formatToNewDate(user?.last_login_at ?? 'Not Provided')}
+                  {user?.last_login_at
+                    ? formatToNewDate(user?.last_login_at)
+                    : 'Not Available'}
                 </p>
               </div>
             </div>

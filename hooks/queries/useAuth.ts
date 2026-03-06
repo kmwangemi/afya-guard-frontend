@@ -1,22 +1,27 @@
-import { api } from '@/lib/api';
+import { authService } from '@/services/authService';
 import { useAuthStore } from '@/stores/authStore';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
-interface LogoutResponse {
-  message: string; // "Logged out successfully"
+export function useLogin() {
+  const router = useRouter();
+  const { setUser, setToken, setRefreshToken } = useAuthStore();
+  return useMutation({
+    mutationFn: authService.login,
+    onSuccess: data => {
+      setUser(data.user);
+      setToken(data.tokens.access_token);
+      setRefreshToken(data.tokens.refresh_token); // store for silent refresh + logout
+      router.push('/dashboard');
+    },
+  });
 }
 
 export function useLogout() {
   const router = useRouter();
-  const { refreshToken, logout } = useAuthStore();
+  const { logout } = useAuthStore();
   return useMutation({
-    mutationFn: async () => {
-      // Send refresh_token so the backend can revoke it in the DB
-      return api.post<LogoutResponse>('/auth/logout', {
-        refresh_token: refreshToken,
-      });
-    },
+    mutationFn: authService.logout,
     onSuccess: () => {
       logout(); // clear user + token + refreshToken from store
       router.push('/login');

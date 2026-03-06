@@ -1,27 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -29,431 +27,506 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatDateTime, formatDate } from "@/lib/helpers";
-import { mockInvestigationsService } from "@/services/mockInvestigationsService";
-import { ChevronLeft, Upload, Check, FileText, AlertCircle } from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  useCloseInvestigation,
+  useInvestigationById,
+  useUpdateInvestigationProgress,
+  useUpdateInvestigationStatus,
+} from '@/hooks/queries/useInvestigations';
+import { useToast } from '@/hooks/use-toast';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/helpers';
+import { CasePriority, CaseStatus } from '@/types/investigation';
+import { AlertCircle, ChevronLeft, FileText, Upload } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
+
+// Fix 26: keyed on UPPERCASE backend values
+const STATUS_LABELS: Record<CaseStatus, string> = {
+  OPEN: 'Open',
+  UNDER_REVIEW: 'Under Review',
+  CONFIRMED_FRAUD: 'Confirmed Fraud',
+  CLEARED: 'Cleared',
+  CLOSED: 'Closed',
+};
+
+const STATUS_COLORS: Record<CaseStatus, string> = {
+  OPEN: 'bg-blue-100 text-blue-800',
+  UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
+  CONFIRMED_FRAUD: 'bg-red-100 text-red-800',
+  CLEARED: 'bg-green-100 text-green-800',
+  CLOSED: 'bg-gray-100 text-gray-800',
+};
+
+// Fix 2+26: URGENT replaces CRITICAL
+const PRIORITY_LABELS: Record<CasePriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+};
+
+const PRIORITY_COLORS: Record<CasePriority, string> = {
+  LOW: 'bg-blue-100 text-blue-800',
+  MEDIUM: 'bg-yellow-100 text-yellow-800',
+  HIGH: 'bg-orange-100 text-orange-800',
+  URGENT: 'bg-red-100 text-red-800',
+};
+
+// Terminal statuses that require a resolution summary
+const TERMINAL_STATUSES: CaseStatus[] = [
+  'CONFIRMED_FRAUD',
+  'CLEARED',
+  'CLOSED',
+];
 
 export default function InvestigationDetailPage() {
   const params = useParams();
   const investigationId = params.id as string;
   const { toast } = useToast();
 
-  const [investigation, setInvestigation] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false);
-  const [updateProgressDialogOpen, setUpdateProgressDialogOpen] = useState(false);
-  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-  const [newStatus, setNewStatus] = useState("");
-  const [progressNotes, setProgressNotes] = useState("");
+  const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
+  const [updateProgressOpen, setUpdateProgressOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+
+  const [newStatus, setNewStatus] = useState<CaseStatus | ''>('');
+  const [resolutionSummary, setResolutionSummary] = useState('');
+  const [estimatedLoss, setEstimatedLoss] = useState('');
+
   const [newProgress, setNewProgress] = useState(0);
-  const [closeOutcome, setCloseOutcome] = useState("");
-  const [closeNotes, setCloseNotes] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [findings, setFindings] = useState('');
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const data = await mockInvestigationsService.getInvestigationById(investigationId);
-        setInvestigation(data);
-        if (data?.progress) {
-          setNewProgress(data.progress);
-        }
-      } catch (error) {
-        console.error("[v0] Error loading investigation:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const [closeStatus, setCloseStatus] = useState<
+    'CONFIRMED_FRAUD' | 'CLEARED' | 'CLOSED' | ''
+  >('');
+  const [closeResolution, setCloseResolution] = useState('');
+  const [closeLoss, setCloseLoss] = useState('');
 
-    loadData();
-  }, [investigationId]);
+  // Fix 23: useInvestigationById hook replaces useEffect + mock
+  const { data: inv, isLoading } = useInvestigationById(investigationId);
+
+  const updateStatus = useUpdateInvestigationStatus();
+  const updateProgress = useUpdateInvestigationProgress();
+  const closeInvestigation = useCloseInvestigation();
 
   const handleUpdateStatus = async () => {
     if (!newStatus) {
       toast({
-        title: "Error",
-        description: "Please select a status",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please select a status.',
+        variant: 'destructive',
       });
       return;
     }
-
-    setIsSubmitting(true);
-    try {
-      const updated = await mockInvestigationsService.updateInvestigationStatus(
-        investigationId,
-        newStatus as any
-      );
-      if (updated) {
-        setInvestigation(updated);
-        setUpdateStatusDialogOpen(false);
-        toast({
-          title: "Success",
-          description: "Investigation status updated",
-        });
-      }
-    } catch (error) {
-      console.error("[v0] Error updating status:", error);
+    const isTerminal = TERMINAL_STATUSES.includes(newStatus as CaseStatus);
+    if (isTerminal && !resolutionSummary.trim()) {
       toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Resolution summary is required for this status.',
+        variant: 'destructive',
       });
-    } finally {
-      setIsSubmitting(false);
+      return;
+    }
+    try {
+      // Fix 18: payload shape { status, resolutionSummary?, estimatedLoss? }
+      await updateStatus.mutateAsync({
+        investigationId,
+        payload: {
+          status: newStatus as CaseStatus,
+          resolutionSummary: resolutionSummary || undefined,
+          estimatedLoss: estimatedLoss ? parseFloat(estimatedLoss) : undefined,
+        },
+      });
+      setUpdateStatusOpen(false);
+      setNewStatus('');
+      setResolutionSummary('');
+      setEstimatedLoss('');
+      toast({ title: 'Success', description: 'Status updated.' });
+    } catch (err) {
+      console.error('[investigations] status error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to update status.',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleUpdateProgress = async () => {
-    setIsSubmitting(true);
     try {
-      const updated = await mockInvestigationsService.updateInvestigationProgress(
+      // Fix 19: payload shape { progress, findings? }
+      await updateProgress.mutateAsync({
         investigationId,
-        newProgress,
-        progressNotes
-      );
-      if (updated) {
-        setInvestigation(updated);
-        setUpdateProgressDialogOpen(false);
-        setProgressNotes("");
-        toast({
-          title: "Success",
-          description: "Investigation progress updated",
-        });
-      }
-    } catch (error) {
-      console.error("[v0] Error updating progress:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update progress",
-        variant: "destructive",
+        payload: { progress: newProgress, findings: findings || undefined },
       });
-    } finally {
-      setIsSubmitting(false);
+      setUpdateProgressOpen(false);
+      setFindings('');
+      toast({ title: 'Success', description: 'Progress updated.' });
+    } catch (err) {
+      console.error('[investigations] progress error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to update progress.',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleCloseInvestigation = async () => {
-    if (!closeOutcome) {
+  const handleClose = async () => {
+    if (!closeStatus || !closeResolution.trim()) {
       toast({
-        title: "Error",
-        description: "Please select an outcome",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'Please select an outcome and provide a resolution summary.',
+        variant: 'destructive',
       });
       return;
     }
-
-    setIsSubmitting(true);
     try {
-      const updated = await mockInvestigationsService.closeInvestigation(
+      // Fix 21: delegates to updateStatus with terminal status via closeInvestigation
+      await closeInvestigation.mutateAsync({
         investigationId,
-        {
-          outcome: closeOutcome as any,
-          fraudConfirmed: Math.random() > 0.5,
-          confirmedAmount: Math.random() * 100000,
-          recommendations: ["Recover funds", "Review provider contract"],
-          actionsTaken: ["Claim denied", "Provider flagged"],
-          notes: closeNotes,
-        },
-        closeNotes
-      );
-      if (updated) {
-        setInvestigation(updated);
-        setCloseDialogOpen(false);
-        setCloseOutcome("");
-        setCloseNotes("");
-        toast({
-          title: "Success",
-          description: "Investigation closed",
-        });
-      }
-    } catch (error) {
-      console.error("[v0] Error closing investigation:", error);
-      toast({
-        title: "Error",
-        description: "Failed to close investigation",
-        variant: "destructive",
+        status: closeStatus,
+        resolutionSummary: closeResolution,
+        estimatedLoss: closeLoss ? parseFloat(closeLoss) : undefined,
       });
-    } finally {
-      setIsSubmitting(false);
+      setCloseOpen(false);
+      setCloseStatus('');
+      setCloseResolution('');
+      setCloseLoss('');
+      toast({ title: 'Success', description: 'Investigation closed.' });
+    } catch (err) {
+      console.error('[investigations] close error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to close investigation.',
+        variant: 'destructive',
+      });
     }
   };
 
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
+        <div className='flex items-center justify-center h-96'>
           <LoadingSpinner />
         </div>
       </DashboardLayout>
     );
   }
 
-  if (!investigation) {
+  if (!inv) {
     return (
       <DashboardLayout>
-        <div className="text-center py-12">
-          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900">Investigation not found</h3>
+        <div className='text-center py-12'>
+          <AlertCircle className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+          <h3 className='text-lg font-semibold text-gray-900'>
+            Investigation not found
+          </h3>
         </div>
       </DashboardLayout>
     );
   }
 
-  const statusColors: Record<string, string> = {
-    open: "bg-blue-100 text-blue-800",
-    in_progress: "bg-yellow-100 text-yellow-800",
-    pending_review: "bg-orange-100 text-orange-800",
-    completed: "bg-green-100 text-green-800",
-    closed: "bg-gray-100 text-gray-800",
-  };
-
-  const priorityColors: Record<string, string> = {
-    low: "bg-blue-100 text-blue-800",
-    medium: "bg-yellow-100 text-yellow-800",
-    high: "bg-orange-100 text-orange-800",
-    critical: "bg-red-100 text-red-800",
-  };
+  const canClose = inv.quickActions.canClose && inv.status !== 'CLOSED';
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/investigations">
-              <Button variant="ghost" size="sm">
-                <ChevronLeft className="h-4 w-4 mr-1" />
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            <Link href='/investigations'>
+              <Button variant='ghost' size='sm'>
+                <ChevronLeft className='h-4 w-4 mr-1' />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{investigation.caseNumber}</h1>
-              <p className="text-gray-600 mt-1">{investigation.providerName}</p>
+              {/* Fix 24: was investigation.caseNumber → inv.invNumber */}
+              <h1 className='text-3xl font-bold text-gray-900'>
+                {inv.invNumber}
+              </h1>
+              {/* Fix 24: was investigation.providerName → inv.subtitle */}
+              <p className='text-gray-600 mt-1'>{inv.subtitle}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setUpdateStatusDialogOpen(true)}
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setUpdateStatusOpen(true);
+              }}
             >
               Update Status
             </Button>
-            <Button 
-              variant="outline"
-              onClick={() => setUpdateProgressDialogOpen(true)}
-            >
-              Update Progress
-            </Button>
-            {investigation.status !== "completed" && investigation.status !== "closed" && (
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => setCloseDialogOpen(true)}
+            {inv.quickActions.canUpdateProgress && (
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setNewProgress(inv.statCards.progress);
+                  setUpdateProgressOpen(true);
+                }}
+              >
+                Update Progress
+              </Button>
+            )}
+            {canClose && (
+              <Button
+                className='bg-blue-600 hover:bg-blue-700'
+                onClick={() => setCloseOpen(true)}
               >
                 Close Investigation
               </Button>
             )}
           </div>
         </div>
-
-        {/* Key Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-6">
-            <p className="text-sm text-gray-600 mb-2">Status</p>
-            <div className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${statusColors[investigation.status]}`}>
-              {investigation.status.charAt(0).toUpperCase() + investigation.status.slice(1).replace("_", " ")}
+        {/* Stat Cards — Fix 24: all fields from statCards nested object */}
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <Card className='p-6'>
+            <p className='text-sm text-gray-600 mb-2'>Status</p>
+            {/* Fix 26: STATUS_COLORS keyed on UPPERCASE */}
+            <div
+              className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${STATUS_COLORS[inv.statCards.status]}`}
+            >
+              {STATUS_LABELS[inv.statCards.status]}
             </div>
           </Card>
-          <Card className="p-6">
-            <p className="text-sm text-gray-600 mb-2">Priority</p>
-            <div className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${priorityColors[investigation.priority]}`}>
-              {investigation.priority.charAt(0).toUpperCase() + investigation.priority.slice(1)}
+          <Card className='p-6'>
+            <p className='text-sm text-gray-600 mb-2'>Priority</p>
+            <div
+              className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${PRIORITY_COLORS[inv.statCards.priority]}`}
+            >
+              {PRIORITY_LABELS[inv.statCards.priority]}
             </div>
           </Card>
-          <Card className="p-6">
-            <p className="text-sm text-gray-600 mb-2">Days Open</p>
-            <p className="text-2xl font-bold text-gray-900">{investigation.daysOpen}</p>
+          <Card className='p-6'>
+            <p className='text-sm text-gray-600 mb-2'>Days Open</p>
+            <p className='text-2xl font-bold text-gray-900'>
+              {inv.statCards.daysOpen}
+            </p>
           </Card>
-          <Card className="p-6">
-            <p className="text-sm text-gray-600 mb-2">Progress</p>
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <Card className='p-6'>
+            <p className='text-sm text-gray-600 mb-2'>Progress</p>
+            <div className='w-full bg-gray-200 rounded-full h-2 mb-2'>
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ width: `${investigation.progress}%` }}
+                className='bg-blue-600 h-2 rounded-full transition-all'
+                style={{ width: `${inv.statCards.progress}%` }}
               />
             </div>
-            <p className="text-sm font-semibold text-gray-900">{investigation.progress}%</p>
+            <p className='text-sm font-semibold text-gray-900'>
+              {inv.statCards.progress}%
+            </p>
           </Card>
         </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Investigation Details */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Investigation Details</h3>
-              <div className="grid grid-cols-2 gap-4">
+          <div className='lg:col-span-2 space-y-6'>
+            {/* Investigation Details — Fix 24: all from investigationDetails nested object */}
+            <Card className='p-6'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Investigation Details
+              </h3>
+              <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <p className="text-sm text-gray-600">Investigator</p>
-                  <p className="font-semibold text-gray-900">{investigation.investigatorName}</p>
+                  <p className='text-sm text-gray-600'>Investigator</p>
+                  <p className='font-semibold text-gray-900'>
+                    {inv.investigationDetails.investigatorName ?? 'Unassigned'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Related Claim</p>
-                  <p className="font-semibold text-gray-900">{investigation.claimNumber}</p>
+                  <p className='text-sm text-gray-600'>Related Claim</p>
+                  <p className='font-semibold text-gray-900'>
+                    {inv.investigationDetails.relatedClaim ?? '—'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Created</p>
-                  <p className="font-semibold text-gray-900">{formatDate(investigation.createdAt)}</p>
+                  <p className='text-sm text-gray-600'>Created</p>
+                  <p className='font-semibold text-gray-900'>
+                    {formatDate(new Date(inv.investigationDetails.createdAt))}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Target Date</p>
-                  <p className="font-semibold text-gray-900">{formatDate(investigation.targetDate)}</p>
+                  <p className='text-sm text-gray-600'>Target Date</p>
+                  <p className='font-semibold text-gray-900'>
+                    {inv.investigationDetails.targetDate
+                      ? formatDate(
+                          new Date(inv.investigationDetails.targetDate),
+                        )
+                      : '—'}
+                  </p>
                 </div>
-                {investigation.completedAt && (
+                {inv.investigationDetails.closedAt && (
                   <div>
-                    <p className="text-sm text-gray-600">Completed</p>
-                    <p className="font-semibold text-gray-900">{formatDate(investigation.completedAt)}</p>
+                    <p className='text-sm text-gray-600'>Closed</p>
+                    <p className='font-semibold text-gray-900'>
+                      {formatDate(new Date(inv.investigationDetails.closedAt))}
+                    </p>
                   </div>
                 )}
               </div>
             </Card>
-
             {/* Findings */}
-            {investigation.findings && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Findings</h3>
-                <p className="text-gray-700">{investigation.findings}</p>
+            {inv.findings && (
+              <Card className='p-6'>
+                <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                  Findings
+                </h3>
+                <p className='text-gray-700'>{inv.findings}</p>
               </Card>
             )}
-
-            {/* Timeline */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
-              <div className="space-y-4">
-                {investigation.timeline?.map((entry: any, idx: number) => (
-                  <div key={idx} className="flex gap-4 pb-4 border-b last:border-b-0">
-                    <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-600 mt-2" />
+            {/* Timeline — Fix 24: { event, actor, note, timestamp } shape */}
+            <Card className='p-6'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Timeline
+              </h3>
+              <div className='space-y-4'>
+                {inv.timeline.length === 0 ? (
+                  <p className='text-gray-500 text-sm'>No events yet.</p>
+                ) : (
+                  inv.timeline.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className='flex gap-4 pb-4 border-b last:border-b-0'
+                    >
+                      <div className='flex flex-col items-center'>
+                        <div className='w-3 h-3 rounded-full bg-purple-600 mt-2' />
+                      </div>
+                      <div className='flex-1'>
+                        <p className='font-semibold text-gray-900'>
+                          {entry.event}
+                        </p>
+                        {entry.actor && (
+                          <p className='text-sm text-gray-600'>{entry.actor}</p>
+                        )}
+                        {entry.note && (
+                          <p className='text-sm text-gray-700 mt-1'>
+                            {entry.note}
+                          </p>
+                        )}
+                        <p className='text-xs text-gray-500 mt-1'>
+                          {formatDateTime(new Date(entry.timestamp))}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{entry.action}</p>
-                      <p className="text-sm text-gray-600">{entry.investigator}</p>
-                      <p className="text-sm text-gray-700 mt-1">{entry.notes}</p>
-                      <p className="text-xs text-gray-500 mt-1">{formatDateTime(entry.date)}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
-
-            {/* Evidence */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Evidence</h3>
-              {investigation.evidence && investigation.evidence.length > 0 ? (
+            {/* Evidence — Fix 24: { fileName, fileType, uploadedBy, uploadedAt } */}
+            <Card className='p-6'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Evidence
+              </h3>
+              {inv.evidence.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-semibold">File Name</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                      <TableHead className="font-semibold">Uploaded By</TableHead>
-                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className='font-semibold'>File Name</TableHead>
+                      <TableHead className='font-semibold'>Type</TableHead>
+                      <TableHead className='font-semibold'>
+                        Uploaded By
+                      </TableHead>
+                      <TableHead className='font-semibold'>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {investigation.evidence.map((evidence: any) => (
-                      <TableRow key={evidence.id}>
-                        <TableCell className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          <a href={evidence.fileUrl} className="text-blue-600 hover:text-blue-700">
-                            {evidence.fileName}
+                    {inv.evidence.map(ev => (
+                      <TableRow key={ev.id}>
+                        <TableCell className='flex items-center gap-2'>
+                          <FileText className='h-4 w-4 text-gray-400' />
+                          <a
+                            href={ev.fileUrl ?? '#'}
+                            className='text-blue-600 hover:text-blue-700'
+                          >
+                            {ev.fileName}
                           </a>
                         </TableCell>
-                        <TableCell>{evidence.fileType.toUpperCase()}</TableCell>
-                        <TableCell>{evidence.uploadedBy}</TableCell>
-                        <TableCell>{formatDate(evidence.uploadedAt)}</TableCell>
+                        <TableCell>{ev.fileType.toUpperCase()}</TableCell>
+                        <TableCell>{ev.uploadedBy ?? '—'}</TableCell>
+                        <TableCell>
+                          {ev.uploadedAt
+                            ? formatDate(new Date(ev.uploadedAt))
+                            : '—'}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-gray-500">No evidence uploaded yet</p>
+                <p className='text-gray-500'>No evidence uploaded yet.</p>
               )}
-              <Button className="mt-4" variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
+              <Button className='mt-4' variant='outline'>
+                <Upload className='h-4 w-4 mr-2' />
                 Upload Evidence
               </Button>
             </Card>
           </div>
-
           {/* Right Column */}
-          <div className="space-y-6">
-            {/* Investigation Summary */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary</h3>
-              <div className="space-y-4">
+          <div className='space-y-6'>
+            {/* Summary — Fix 24: from inv.summary */}
+            <Card className='p-6'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+                Summary
+              </h3>
+              <div className='space-y-4'>
+                {inv.summary.alertNumber && (
+                  <div>
+                    <p className='text-xs text-gray-600 mb-1'>Alert Number</p>
+                    <p className='text-sm font-semibold text-gray-900'>
+                      {inv.summary.alertNumber}
+                    </p>
+                  </div>
+                )}
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Alert Number</p>
-                  <p className="text-sm font-semibold text-gray-900">{investigation.alertNumber}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Claim Number</p>
+                  <p className='text-sm font-semibold text-gray-900'>
+                    {inv.summary.claimNumber ?? '—'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Claim Number</p>
-                  <p className="text-sm font-semibold text-gray-900">{investigation.claimNumber}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Provider</p>
+                  <p className='text-sm font-semibold text-gray-900'>
+                    {inv.summary.providerName ?? '—'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Provider</p>
-                  <p className="text-sm font-semibold text-gray-900">{investigation.providerName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Investigator</p>
-                  <p className="text-sm font-semibold text-gray-900">{investigation.investigatorName}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Investigator</p>
+                  <p className='text-sm font-semibold text-gray-900'>
+                    {inv.summary.investigatorName ?? 'Unassigned'}
+                  </p>
                 </div>
               </div>
             </Card>
-
-            {/* Outcome (if completed) */}
-            {investigation.outcome && (
-              <Card className="p-6 border-green-200 bg-green-50">
-                <h3 className="text-lg font-semibold text-green-900 mb-4">Investigation Outcome</h3>
-                <div className="space-y-3">
+            {/* Resolution — Fix 3: no InvestigationOutcome; use resolutionSummary + estimatedLoss */}
+            {(inv.resolutionSummary || inv.estimatedLoss) && (
+              <Card className='p-6 border-green-200 bg-green-50'>
+                <h3 className='text-lg font-semibold text-green-900 mb-4'>
+                  Resolution
+                </h3>
+                <div className='space-y-3'>
                   <div>
-                    <p className="text-sm text-green-700">Outcome</p>
-                    <p className="font-semibold text-green-900">
-                      {investigation.outcome.outcome.replace("_", " ")}
+                    <p className='text-sm text-green-700'>Outcome</p>
+                    <p className='font-semibold text-green-900'>
+                      {STATUS_LABELS[inv.status]}
                     </p>
                   </div>
-                  {investigation.outcome.fraudConfirmed && (
-                    <>
-                      <div>
-                        <p className="text-sm text-red-700">Fraud Confirmed</p>
-                        <p className="text-lg font-bold text-red-600">Yes</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-red-700">Amount</p>
-                        <p className="font-semibold text-red-900">
-                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(investigation.outcome.confirmedAmount)}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                  {investigation.outcome.recommendations?.length > 0 && (
+                  {inv.resolutionSummary && (
                     <div>
-                      <p className="text-sm text-green-700 mb-2">Recommendations</p>
-                      <ul className="space-y-1">
-                        {investigation.outcome.recommendations.map((rec: string, idx: number) => (
-                          <li key={idx} className="text-sm text-green-900 flex items-center gap-2">
-                            <Check className="h-4 w-4" />
-                            {rec}
-                          </li>
-                        ))}
-                      </ul>
+                      <p className='text-sm text-green-700'>Summary</p>
+                      <p className='text-sm text-green-900'>
+                        {inv.resolutionSummary}
+                      </p>
+                    </div>
+                  )}
+                  {inv.estimatedLoss != null && (
+                    <div>
+                      <p className='text-sm text-red-700'>Estimated Loss</p>
+                      <p className='font-semibold text-red-900'>
+                        {formatCurrency(inv.estimatedLoss)}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -461,119 +534,199 @@ export default function InvestigationDetailPage() {
             )}
           </div>
         </div>
-
-        {/* Dialogs */}
-        <Dialog open={updateStatusDialogOpen} onOpenChange={setUpdateStatusDialogOpen}>
+        {/* Update Status Dialog — Fix 25: UPPERCASE values from availableStatusTransitions */}
+        <Dialog open={updateStatusOpen} onOpenChange={setUpdateStatusOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Update Investigation Status</DialogTitle>
               <DialogDescription>
-                Change the status of this investigation
+                Change the status of this investigation.
               </DialogDescription>
             </DialogHeader>
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select new status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="pending_review">Pending Review</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className='space-y-4'>
+              <Select
+                value={newStatus}
+                onValueChange={v => setNewStatus(v as CaseStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder='Select new status' />
+                </SelectTrigger>
+                <SelectContent>
+                  {inv.quickActions.availableStatusTransitions.map(s => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newStatus &&
+                TERMINAL_STATUSES.includes(newStatus as CaseStatus) && (
+                  <>
+                    <div>
+                      <label className='text-sm font-medium text-gray-700'>
+                        Resolution Summary *
+                      </label>
+                      <Textarea
+                        placeholder='Required for this status...'
+                        value={resolutionSummary}
+                        onChange={e => setResolutionSummary(e.target.value)}
+                        className='mt-1'
+                      />
+                    </div>
+                    <div>
+                      <label className='text-sm font-medium text-gray-700'>
+                        Estimated Loss (KES)
+                      </label>
+                      <Input
+                        type='number'
+                        placeholder='Optional'
+                        value={estimatedLoss}
+                        onChange={e => setEstimatedLoss(e.target.value)}
+                        className='mt-1'
+                      />
+                    </div>
+                  </>
+                )}
+            </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setUpdateStatusDialogOpen(false)}>
+              <Button
+                variant='outline'
+                onClick={() => setUpdateStatusOpen(false)}
+                disabled={updateStatus.isPending}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleUpdateStatus} disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update"}
+              <Button
+                onClick={handleUpdateStatus}
+                disabled={updateStatus.isPending}
+              >
+                {updateStatus.isPending ? 'Updating...' : 'Update'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <Dialog open={updateProgressDialogOpen} onOpenChange={setUpdateProgressDialogOpen}>
+        {/* Update Progress Dialog — Fix 19: uses findings not notes */}
+        <Dialog open={updateProgressOpen} onOpenChange={setUpdateProgressOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Update Investigation Progress</DialogTitle>
               <DialogDescription>
-                Update the progress and add notes
+                Update the completion percentage and analyst findings.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className='space-y-4'>
               <div>
-                <label className="text-sm font-medium text-gray-700">Progress (%)</label>
+                <label className='text-sm font-medium text-gray-700'>
+                  Progress (%)
+                </label>
                 <Input
-                  type="number"
-                  min="0"
-                  max="100"
+                  type='number'
+                  min='0'
+                  max='100'
                   value={newProgress}
-                  onChange={(e) => setNewProgress(parseInt(e.target.value))}
-                  className="mt-1"
+                  onChange={e => setNewProgress(parseInt(e.target.value))}
+                  className='mt-1'
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Notes</label>
+                <label className='text-sm font-medium text-gray-700'>
+                  Findings
+                </label>
                 <Textarea
-                  placeholder="Add progress notes..."
-                  value={progressNotes}
-                  onChange={(e) => setProgressNotes(e.target.value)}
-                  className="mt-1"
+                  placeholder='Update analyst findings narrative...'
+                  value={findings}
+                  onChange={e => setFindings(e.target.value)}
+                  className='mt-1'
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setUpdateProgressDialogOpen(false)}>
+              <Button
+                variant='outline'
+                onClick={() => setUpdateProgressOpen(false)}
+                disabled={updateProgress.isPending}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleUpdateProgress} disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update"}
+              <Button
+                onClick={handleUpdateProgress}
+                disabled={updateProgress.isPending}
+              >
+                {updateProgress.isPending ? 'Updating...' : 'Update'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        {/* Close Dialog — Fix 21: uses terminal CaseStatus + resolutionSummary */}
+        <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Close Investigation</DialogTitle>
               <DialogDescription>
-                Finalize the investigation with an outcome
+                Finalise the investigation with an outcome and resolution
+                summary.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className='space-y-4'>
               <div>
-                <label className="text-sm font-medium text-gray-700">Outcome</label>
-                <Select value={closeOutcome} onValueChange={setCloseOutcome}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select outcome" />
+                <label className='text-sm font-medium text-gray-700'>
+                  Outcome *
+                </label>
+                <Select
+                  value={closeStatus}
+                  onValueChange={v => setCloseStatus(v as typeof closeStatus)}
+                >
+                  <SelectTrigger className='mt-1'>
+                    <SelectValue placeholder='Select outcome' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fraud_confirmed">Fraud Confirmed</SelectItem>
-                    <SelectItem value="suspected">Suspected</SelectItem>
-                    <SelectItem value="inconclusive">Inconclusive</SelectItem>
-                    <SelectItem value="no_fraud">No Fraud</SelectItem>
+                    <SelectItem value='CONFIRMED_FRAUD'>
+                      Confirmed Fraud
+                    </SelectItem>
+                    <SelectItem value='CLEARED'>Cleared</SelectItem>
+                    <SelectItem value='CLOSED'>Closed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Notes</label>
+                <label className='text-sm font-medium text-gray-700'>
+                  Resolution Summary *
+                </label>
                 <Textarea
-                  placeholder="Add final notes..."
-                  value={closeNotes}
-                  onChange={(e) => setCloseNotes(e.target.value)}
-                  className="mt-1"
+                  placeholder='Required: describe the outcome...'
+                  value={closeResolution}
+                  onChange={e => setCloseResolution(e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+              <div>
+                <label className='text-sm font-medium text-gray-700'>
+                  Estimated Loss (KES)
+                </label>
+                <Input
+                  type='number'
+                  placeholder='Optional'
+                  value={closeLoss}
+                  onChange={e => setCloseLoss(e.target.value)}
+                  className='mt-1'
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCloseDialogOpen(false)}>
+              <Button
+                variant='outline'
+                onClick={() => setCloseOpen(false)}
+                disabled={closeInvestigation.isPending}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCloseInvestigation} disabled={isSubmitting}>
-                {isSubmitting ? "Closing..." : "Close Investigation"}
+              <Button
+                onClick={handleClose}
+                disabled={closeInvestigation.isPending}
+              >
+                {closeInvestigation.isPending
+                  ? 'Closing...'
+                  : 'Close Investigation'}
               </Button>
             </DialogFooter>
           </DialogContent>

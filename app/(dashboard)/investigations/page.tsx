@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card } from '@/components/ui/card';
+import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -21,43 +28,74 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { useInvestigations } from '@/hooks/queries/useInvestigations';
-import { InvestigationFilterParams } from '@/types/investigation';
-import { RiskScoreBadge } from '@/components/shared/RiskScoreBadge';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { formatDateTime } from '@/lib/helpers';
-import { Pagination } from '@/components/shared/Pagination';
-import Link from 'next/link';
-import { FolderOpen, Plus } from 'lucide-react';
+  useCreateInvestigation,
+  useInvestigations,
+} from '@/hooks/queries/useInvestigations';
 import { useToast } from '@/hooks/use-toast';
-import { mockInvestigationsService } from '@/services/mockInvestigationsService';
+import { formatDateTime } from '@/lib/helpers';
+import {
+  CasePriority,
+  CaseStatus,
+  InvestigationFilterParams,
+} from '@/types/investigation';
+import { FolderOpen, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+
+// Fix 35: UPPERCASE keys matching CasePriority; URGENT replaces critical
+const PRIORITY_COLORS: Record<CasePriority, string> = {
+  LOW: 'bg-blue-100 text-blue-800',
+  MEDIUM: 'bg-yellow-100 text-yellow-800',
+  HIGH: 'bg-orange-100 text-orange-800',
+  URGENT: 'bg-red-100 text-red-800',
+};
+
+const PRIORITY_LABELS: Record<CasePriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+};
+
+// Fix 28: UPPERCASE status labels matching CaseStatus
+const STATUS_LABELS: Record<CaseStatus, string> = {
+  OPEN: 'Open',
+  UNDER_REVIEW: 'Under Review',
+  CONFIRMED_FRAUD: 'Confirmed Fraud',
+  CLEARED: 'Cleared',
+  CLOSED: 'Closed',
+};
 
 export default function InvestigationsPage() {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  // Fix 31: search wired to filters
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fix 30: form now includes claimId + fraudScoreId (required by backend InvestigationCreate)
   const [formData, setFormData] = useState({
-    priority: '',
+    claimId: '',
+    fraudScoreId: '',
+    priority: '' as CasePriority | '',
+    assignedTo: '',
     notes: '',
     targetDate: '',
   });
 
   const filters: InvestigationFilterParams = {};
-  if (status && status !== 'all') filters.status = status as any;
-  if (priority && priority !== 'all') filters.priority = priority as any;
+  // Fix 31: search now included in filters
+  if (search) filters.search = search;
+  // Fix 28: UPPERCASE CaseStatus values
+  if (status && status !== 'all') filters.status = status as CaseStatus;
+  // Fix 29: UPPERCASE CasePriority values; URGENT instead of critical
+  if (priority && priority !== 'all')
+    filters.priority = priority as CasePriority;
 
   const { data: investigationsResponse, isLoading } = useInvestigations(
     filters,
@@ -65,53 +103,65 @@ export default function InvestigationsPage() {
     pageSize,
   );
 
+  // Fix 30: uses hook (invalidates list cache) instead of mockInvestigationsService
+  const createInvestigation = useCreateInvestigation();
+
   const handleCreateInvestigation = async () => {
-    if (!formData.priority) {
+    // Fix 30: claimId + fraudScoreId are required by InvestigationCreate
+    if (!formData.claimId.trim()) {
       toast({
         title: 'Error',
-        description: 'Please select a priority level',
+        description: 'Claim ID is required.',
         variant: 'destructive',
       });
       return;
     }
-
-    setIsSubmitting(true);
-    try {
-      await mockInvestigationsService.createInvestigation({
-        priority: formData.priority as any,
-        notes: formData.notes,
-        targetDate: formData.targetDate
-          ? new Date(formData.targetDate)
-          : undefined,
+    if (!formData.fraudScoreId.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Fraud Score ID is required.',
+        variant: 'destructive',
       });
-
+      return;
+    }
+    if (!formData.priority) {
+      toast({
+        title: 'Error',
+        description: 'Please select a priority level.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      await createInvestigation.mutateAsync({
+        claimId: formData.claimId.trim(),
+        fraudScoreId: formData.fraudScoreId.trim(),
+        priority: formData.priority,
+        assignedTo: formData.assignedTo.trim() || undefined,
+        notes: formData.notes || undefined,
+        targetDate: formData.targetDate || undefined,
+      });
       setCreateDialogOpen(false);
       setFormData({
+        claimId: '',
+        fraudScoreId: '',
         priority: '',
+        assignedTo: '',
         notes: '',
         targetDate: '',
       });
       toast({
         title: 'Success',
-        description: 'Investigation created successfully',
+        description: 'Investigation created successfully.',
       });
-    } catch (error) {
-      console.error('[v0] Error creating investigation:', error);
+    } catch (err) {
+      console.error('[investigations] create error:', err);
       toast({
         title: 'Error',
-        description: 'Failed to create investigation',
+        description: 'Failed to create investigation.',
         variant: 'destructive',
       });
-    } finally {
-      setIsSubmitting(false);
     }
-  };
-
-  const priorityColors: Record<string, string> = {
-    low: 'bg-blue-100 text-blue-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    high: 'bg-orange-100 text-orange-800',
-    critical: 'bg-red-100 text-red-800',
   };
 
   return (
@@ -136,6 +186,7 @@ export default function InvestigationsPage() {
         {/* Filters */}
         <Card className='p-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4'>
+            {/* Fix 31: search now passed into filters */}
             <Input
               placeholder='Search case number...'
               value={search}
@@ -144,6 +195,7 @@ export default function InvestigationsPage() {
                 setPage(1);
               }}
             />
+            {/* Fix 28: UPPERCASE CaseStatus values; removed in_progress/pending_review/completed */}
             <Select
               value={status || 'all'}
               onValueChange={v => {
@@ -156,13 +208,14 @@ export default function InvestigationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>All Statuses</SelectItem>
-                <SelectItem value='open'>Open</SelectItem>
-                <SelectItem value='in_progress'>In Progress</SelectItem>
-                <SelectItem value='pending_review'>Pending Review</SelectItem>
-                <SelectItem value='completed'>Completed</SelectItem>
-                <SelectItem value='closed'>Closed</SelectItem>
+                <SelectItem value='OPEN'>Open</SelectItem>
+                <SelectItem value='UNDER_REVIEW'>Under Review</SelectItem>
+                <SelectItem value='CONFIRMED_FRAUD'>Confirmed Fraud</SelectItem>
+                <SelectItem value='CLEARED'>Cleared</SelectItem>
+                <SelectItem value='CLOSED'>Closed</SelectItem>
               </SelectContent>
             </Select>
+            {/* Fix 29: UPPERCASE CasePriority values; URGENT replaces critical */}
             <Select
               value={priority || 'all'}
               onValueChange={v => {
@@ -175,10 +228,10 @@ export default function InvestigationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>All Priorities</SelectItem>
-                <SelectItem value='low'>Low</SelectItem>
-                <SelectItem value='medium'>Medium</SelectItem>
-                <SelectItem value='high'>High</SelectItem>
-                <SelectItem value='critical'>Critical</SelectItem>
+                <SelectItem value='LOW'>Low</SelectItem>
+                <SelectItem value='MEDIUM'>Medium</SelectItem>
+                <SelectItem value='HIGH'>High</SelectItem>
+                <SelectItem value='URGENT'>Urgent</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -221,8 +274,7 @@ export default function InvestigationsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : !investigationsResponse?.data ||
-                investigationsResponse.data.length === 0 ? (
+              ) : !investigationsResponse?.data?.length ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -235,47 +287,52 @@ export default function InvestigationsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                investigationsResponse.data.map(investigation => (
-                  <TableRow key={investigation.id} className='hover:bg-gray-50'>
+                investigationsResponse.data.map(inv => (
+                  <TableRow key={inv.id} className='hover:bg-gray-50'>
                     <TableCell className='font-medium text-blue-600 hover:text-blue-700'>
-                      <Link href={`/investigations/${investigation.id}`}>
-                        {investigation.caseNumber}
+                      {/* Fix 33: was investigation.caseNumber → inv.invNumber */}
+                      <Link href={`/investigations/${inv.id}`}>
+                        {inv.invNumber}
                       </Link>
                     </TableCell>
                     <TableCell className='text-gray-700'>
-                      {investigation.investigatorName}
+                      {inv.investigatorName ?? '—'}
                     </TableCell>
                     <TableCell className='text-gray-700'>
-                      {investigation.providerName}
+                      {inv.providerName ?? '—'}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={investigation.status} size='sm' />
+                      {/* Fix 28: STATUS_LABELS keyed on UPPERCASE */}
+                      <span className='text-sm'>
+                        {STATUS_LABELS[inv.status]}
+                      </span>
                     </TableCell>
                     <TableCell>
+                      {/* Fix 35: PRIORITY_COLORS keyed on UPPERCASE */}
                       <span
-                        className={`px-2 py-1 rounded-full text-sm font-medium ${priorityColors[investigation.priority]}`}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${PRIORITY_COLORS[inv.priority]}`}
                       >
-                        {investigation.priority.charAt(0).toUpperCase() +
-                          investigation.priority.slice(1)}
+                        {PRIORITY_LABELS[inv.priority]}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className='w-full bg-gray-200 rounded-full h-2'>
                         <div
                           className='bg-blue-600 h-2 rounded-full transition-all'
-                          style={{ width: `${investigation.progress}%` }}
+                          style={{ width: `${inv.progress}%` }}
                         />
                       </div>
                       <p className='text-xs text-gray-600 mt-1'>
-                        {investigation.progress}%
+                        {inv.progress}%
                       </p>
                     </TableCell>
                     <TableCell className='text-sm text-gray-600'>
-                      {formatDateTime(investigation.createdAt)}
+                      {/* Fix 34: openedAt is ISO string — wrap with new Date() */}
+                      {formatDateTime(new Date(inv.openedAt))}
                     </TableCell>
                     <TableCell className='text-right'>
                       <Link
-                        href={`/investigations/${investigation.id}`}
+                        href={`/investigations/${inv.id}`}
                         className='text-blue-600 hover:text-blue-700 text-sm font-medium'
                       >
                         View
@@ -298,34 +355,76 @@ export default function InvestigationsPage() {
           />
         )}
         {/* Create Investigation Dialog */}
+        {/* Fix 30: form now collects claimId + fraudScoreId (required by backend) */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogContent className='max-w-2xl'>
             <DialogHeader>
               <DialogTitle>Create New Investigation</DialogTitle>
               <DialogDescription>
-                Open a new fraud investigation case for suspicious activity or
-                alerts
+                Open a new fraud investigation case.
               </DialogDescription>
             </DialogHeader>
             <div className='space-y-4'>
+              <div>
+                <label className='text-sm font-medium text-gray-700'>
+                  Claim ID *
+                </label>
+                <Input
+                  placeholder='UUID of the claim to investigate'
+                  value={formData.claimId}
+                  onChange={e =>
+                    setFormData({ ...formData, claimId: e.target.value })
+                  }
+                  className='mt-1'
+                />
+              </div>
+              <div>
+                <label className='text-sm font-medium text-gray-700'>
+                  Fraud Score ID *
+                </label>
+                <Input
+                  placeholder='UUID of the associated fraud score'
+                  value={formData.fraudScoreId}
+                  onChange={e =>
+                    setFormData({ ...formData, fraudScoreId: e.target.value })
+                  }
+                  className='mt-1'
+                />
+              </div>
+              {/* Fix 29: UPPERCASE priority values; URGENT replaces critical */}
               <div>
                 <label className='text-sm font-medium text-gray-700'>
                   Priority Level *
                 </label>
                 <Select
                   value={formData.priority}
-                  onValueChange={v => setFormData({ ...formData, priority: v })}
+                  onValueChange={v =>
+                    setFormData({ ...formData, priority: v as CasePriority })
+                  }
                 >
                   <SelectTrigger className='mt-1'>
                     <SelectValue placeholder='Select priority level' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='low'>Low</SelectItem>
-                    <SelectItem value='medium'>Medium</SelectItem>
-                    <SelectItem value='high'>High</SelectItem>
-                    <SelectItem value='critical'>Critical</SelectItem>
+                    <SelectItem value='LOW'>Low</SelectItem>
+                    <SelectItem value='MEDIUM'>Medium</SelectItem>
+                    <SelectItem value='HIGH'>High</SelectItem>
+                    <SelectItem value='URGENT'>Urgent</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className='text-sm font-medium text-gray-700'>
+                  Assign To (optional)
+                </label>
+                <Input
+                  placeholder='Analyst user UUID'
+                  value={formData.assignedTo}
+                  onChange={e =>
+                    setFormData({ ...formData, assignedTo: e.target.value })
+                  }
+                  className='mt-1'
+                />
               </div>
               <div>
                 <label className='text-sm font-medium text-gray-700'>
@@ -358,15 +457,17 @@ export default function InvestigationsPage() {
               <Button
                 variant='outline'
                 onClick={() => setCreateDialogOpen(false)}
-                disabled={isSubmitting}
+                disabled={createInvestigation.isPending}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateInvestigation}
-                disabled={isSubmitting}
+                disabled={createInvestigation.isPending}
               >
-                {isSubmitting ? 'Creating...' : 'Create Investigation'}
+                {createInvestigation.isPending
+                  ? 'Creating...'
+                  : 'Create Investigation'}
               </Button>
             </DialogFooter>
           </DialogContent>
