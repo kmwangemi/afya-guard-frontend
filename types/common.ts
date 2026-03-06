@@ -3,6 +3,10 @@ export interface DashboardStats {
   flaggedClaims: number;
   criticalAlerts: number;
   estimatedFraudPrevented: number;
+  totalClaimsChange: number;
+  flaggedClaimsChange: number;
+  criticalAlertsChange: number;
+  fraudPreventedChange: number;
 }
 
 export interface DecodedToken {

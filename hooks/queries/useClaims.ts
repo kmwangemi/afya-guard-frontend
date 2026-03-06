@@ -1,101 +1,101 @@
+import { claimsService } from '@/services/claimsService';
+import { ClaimFilterParams } from '@/types/claim';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { mockClaimsService } from '@/services/mockClaimsService';
-import { Claim, ClaimFilterParams } from '@/types/claim';
 
-const CLAIMS_QUERY_KEY = 'claims';
+const CLAIMS_KEY = 'claims';
 
-/**
- * Hook to fetch claims with filtering and pagination
- */
+// ─── Query hooks ──────────────────────────────────────────────────────────────
+
 export function useClaims(
   filters: ClaimFilterParams = {},
   page: number = 1,
-  pageSize: number = 25
+  pageSize: number = 25,
 ) {
   return useQuery({
-    queryKey: [CLAIMS_QUERY_KEY, filters, page, pageSize],
-    queryFn: () => mockClaimsService.getClaims(filters, page, pageSize),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: [CLAIMS_KEY, 'list', filters, page, pageSize],
+    queryFn: () => claimsService.getClaims(filters, page, pageSize),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
-/**
- * Hook to fetch a single claim by ID
- */
+// Fix 10: was [CLAIMS_KEY, claimId] which collided with the list key structure.
+// Now uses a 'detail' segment so invalidation is scoped correctly.
 export function useClaimById(claimId: string) {
   return useQuery({
-    queryKey: [CLAIMS_QUERY_KEY, claimId],
-    queryFn: () => mockClaimsService.getClaimById(claimId),
+    queryKey: [CLAIMS_KEY, 'detail', claimId],
+    queryFn: () => claimsService.getClaimById(claimId),
     staleTime: 5 * 60 * 1000,
     enabled: !!claimId,
   });
 }
 
-/**
- * Hook to fetch claim analysis
- */
+// Fix 10: same — was [CLAIMS_KEY, claimId, 'analysis']
+// The service re-uses GET /claims/{id} and extracts fraud_analysis,
+// so no extra network call happens when both hooks are used on the same page.
 export function useClaimAnalysis(claimId: string) {
   return useQuery({
-    queryKey: [CLAIMS_QUERY_KEY, claimId, 'analysis'],
-    queryFn: () => mockClaimsService.getClaimAnalysis(claimId),
+    queryKey: [CLAIMS_KEY, 'detail', claimId, 'analysis'],
+    queryFn: () => claimsService.getClaimAnalysis(claimId),
     staleTime: 10 * 60 * 1000,
     enabled: !!claimId,
   });
 }
 
-/**
- * Hook to approve a claim
- */
+// ─── Mutation helpers ─────────────────────────────────────────────────────────
+// Fix 11: mutations now invalidate both the list AND the specific detail cache,
+//         so the detail page reflects the new status without a manual refresh.
+
+function useClaimMutation<TVar>(
+  mutationFn: (vars: TVar) => Promise<unknown>,
+  claimIdFn: (vars: TVar) => string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: (_data, vars) => {
+      const claimId = claimIdFn(vars);
+      // Invalidate the full list (status badge changes)
+      queryClient.invalidateQueries({ queryKey: [CLAIMS_KEY, 'list'] });
+      // Invalidate the specific detail + analysis (action buttons, status bar)
+      queryClient.invalidateQueries({
+        queryKey: [CLAIMS_KEY, 'detail', claimId],
+      });
+    },
+  });
+}
+
 export function useApproveClaim() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, notes }: { claimId: string; notes?: string }) =>
-      mockClaimsService.approveClaim(claimId, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
-    },
-  });
+  return useClaimMutation(
+    ({ claimId, notes }: { claimId: string; notes?: string }) =>
+      claimsService.approveClaim(claimId, notes),
+    v => v.claimId,
+  );
 }
 
-/**
- * Hook to reject a claim
- */
 export function useRejectClaim() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, reason }: { claimId: string; reason: string }) =>
-      mockClaimsService.rejectClaim(claimId, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
-    },
-  });
+  return useClaimMutation(
+    ({ claimId, reason }: { claimId: string; reason: string }) =>
+      claimsService.rejectClaim(claimId, reason),
+    v => v.claimId,
+  );
 }
 
-/**
- * Hook to flag a claim for investigation
- */
 export function useFlagClaimForInvestigation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, investigationType }: { claimId: string; investigationType: string }) =>
-      mockClaimsService.flagForInvestigation(claimId, investigationType),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
-    },
-  });
+  return useClaimMutation(
+    ({
+      claimId,
+      investigationType,
+    }: {
+      claimId: string;
+      investigationType: string;
+    }) => claimsService.flagForInvestigation(claimId, investigationType),
+    v => v.claimId,
+  );
 }
 
-/**
- * Hook to assign claim to investigator
- */
 export function useAssignClaimToInvestigator() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
+  return useClaimMutation(
+    ({
       claimId,
       investigatorId,
       investigatorName,
@@ -104,9 +104,11 @@ export function useAssignClaimToInvestigator() {
       investigatorId: string;
       investigatorName: string;
     }) =>
-      mockClaimsService.assignInvestigator(claimId, investigatorId, investigatorName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [CLAIMS_QUERY_KEY] });
-    },
-  });
+      claimsService.assignInvestigator(
+        claimId,
+        investigatorId,
+        investigatorName,
+      ),
+    v => v.claimId,
+  );
 }

@@ -1,75 +1,117 @@
-import { RiskLevel } from "./claim";
-
+// Fix 11: backend FacilityType enum is UPPERCASE
 export type FacilityType =
-  | "hospital"
-  | "clinic"
-  | "diagnostic"
-  | "laboratory"
-  | "pharmacy"
-  | "other";
+  | 'PUBLIC_HOSPITAL'
+  | 'PRIVATE_HOSPITAL'
+  | 'FAITH_BASED'
+  | 'CLINIC'
+  | 'LABORATORY'
+  | 'PHARMACY'
+  | 'SPECIALIST_CENTER';
 
-export type AccreditationStatus = "active" | "suspended" | "revoked" | "pending";
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
-export interface ProviderStatistics {
+export type AccreditationStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'REVOKED'
+  | 'PENDING';
+
+// ── List item (GET /providers) ────────────────────────────────────────────────
+export interface ProviderListItem {
+  id: string;
+  shaProviderCode: string;
+  name: string;
+  facilityType: FacilityType | null;
+  county: string | null;
   totalClaims: number;
-  totalAmount: number;
-  averageAmount: number;
-  flaggedClaims: number;
-  flaggedPercentage: number;
-  confirmedFraud: number;
-  rejectionRate: number;
-  averageProcessingTime: number;
+  flaggedPercentage: number; // e.g. 0.9 → display as "0.9%"
+  riskScore: number | null;
+  riskLevel: RiskLevel | null;
+  accreditationStatus: AccreditationStatus | null;
+  highRiskFlag: boolean;
+}
+
+// ── Detail response sub-types (GET /providers/{id}) ───────────────────────────
+export interface ProviderHeaderStats {
+  riskScore: number | null;
+  riskLevel: RiskLevel | null;
+  totalClaims: number;
+  flaggedClaimsPercentage: number;
+  confirmedFraudCount: number;
+}
+
+export interface ProviderInformation {
+  facilityType: FacilityType | null;
+  county: string | null;
+  phone: string | null;
+  email: string | null;
+  bedCapacity: number | null;
+  status: AccreditationStatus | null;
+}
+
+export interface RiskProfileBar {
+  label: string;
+  value: number; // 0–100
+  colour: string; // "red" | "orange" | "purple"
 }
 
 export interface RiskProfile {
-  claimDeviation: number;
-  rejectionRate: number;
-  procedureDiversity: number;
-  volumeAnomaly: number;
-  fraudHistory: number;
-  overall: number;
+  claimDeviation: RiskProfileBar;
+  rejectionRate: RiskProfileBar;
+  fraudHistoryScore: RiskProfileBar;
 }
 
-export interface Provider {
+export interface QuickStats {
+  totalClaims: number;
+  flagged: number;
+  confirmedFraud: number;
+  lastClaimDate: string | null; // ISO date string
+}
+
+export interface FraudHistory {
+  confirmedCases: number;
+  suspectedCases: number;
+  totalFraudAmount: number;
+}
+
+export interface ProviderStatistics {
+  totalAmount: number;
+  averageClaim: number;
+  rejectionRate: number;
+  avgProcessingTimeDays: number;
+}
+
+// ── Full detail type ──────────────────────────────────────────────────────────
+export interface ProviderDetail {
   id: string;
-  code: string;
+  shaProviderCode: string;
   name: string;
-  facilityType: FacilityType;
-  countyCode: string;
-  countyName: string;
-  subcounty: string;
-  location: string;
-  contact: string;
-  email?: string;
-  phone?: string;
-  bedCapacity?: number;
-  accreditationStatus: AccreditationStatus;
-  accreditationNumber?: string;
-  active: boolean;
-  riskScore: number;
-  riskLevel: RiskLevel;
+  header: ProviderHeaderStats;
+  providerInformation: ProviderInformation;
   riskProfile: RiskProfile;
   statistics: ProviderStatistics;
-  createdAt: Date;
-  updatedAt: Date;
-  lastClaimDate: Date;
-  fraudHistory?: {
-    confirmedCases: number;
-    suspectedCases: number;
-    totalAmount: number;
-    lastInvestigation?: Date;
-  };
+  quickStats: QuickStats;
+  fraudHistory: FraudHistory;
+  subCounty: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
+// ── Filter params ─────────────────────────────────────────────────────────────
 export interface ProviderFilterParams {
   search?: string;
   county?: string;
   facilityType?: FacilityType;
   riskLevel?: RiskLevel;
-  accreditationStatus?: AccreditationStatus;
 }
 
-export interface ProviderSort {
-  field: "riskScore" | "claimsVolume" | "fraudRate" | "name";
-  direction: "asc" | "desc";
+// ── Create payload ────────────────────────────────────────────────────────────
+export interface ProviderCreateParams {
+  shaProviderCode: string; // required by backend
+  name: string;
+  county?: string;
+  facilityType?: FacilityType;
+  phone?: string;
+  email?: string;
+  bedCapacity?: number;
 }

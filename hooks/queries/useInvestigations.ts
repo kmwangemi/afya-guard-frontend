@@ -1,156 +1,187 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Investigation, InvestigationFilterParams, InvestigationStatus, CreateInvestigationPayload } from "@/types/investigation";
-import { mockInvestigationsService } from "@/services/mockInvestigationsService";
+import { investigationsService } from '@/services/investigationsService';
+import {
+  CreateInvestigationPayload,
+  InvestigationFilterParams,
+  UpdateProgressPayload,
+  UpdateStatusPayload,
+  UploadEvidencePayload,
+} from '@/types/investigation';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-const INVESTIGATIONS_QUERY_KEY = "investigations";
+const INV_KEY = 'investigations';
 
-/**
- * Hook to fetch investigations with filtering and pagination
- */
+// ─── Query hooks ──────────────────────────────────────────────────────────────
+
+// Fix 15: calls real investigationsService
 export function useInvestigations(
   filters: InvestigationFilterParams = {},
   page: number = 1,
-  pageSize: number = 25
+  pageSize: number = 25,
 ) {
   return useQuery({
-    queryKey: [INVESTIGATIONS_QUERY_KEY, { filters, page, pageSize }],
-    queryFn: () => mockInvestigationsService.getInvestigations(filters, page, pageSize),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 60 * 1000, // Auto-refresh every 60 seconds
+    queryKey: [INV_KEY, 'list', filters, page, pageSize],
+    queryFn: () =>
+      investigationsService.getInvestigations(filters, page, pageSize),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 60 * 1000,
   });
 }
-
-/**
- * Hook to fetch a single investigation
- */
+// Fix 16: scoped key ['investigations', 'detail', id] — was colliding with list key
+// Fix 8: now returns InvestigationDetail (nested response)
 export function useInvestigationById(investigationId: string) {
   return useQuery({
-    queryKey: [INVESTIGATIONS_QUERY_KEY, investigationId],
-    queryFn: () => mockInvestigationsService.getInvestigationById(investigationId),
+    queryKey: [INV_KEY, 'detail', investigationId],
+    queryFn: () => investigationsService.getInvestigationById(investigationId),
     enabled: !!investigationId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-/**
- * Hook to fetch investigation statistics
- */
-export function useInvestigationStats() {
+export function useInvestigationNotes(investigationId: string) {
   return useQuery({
-    queryKey: [INVESTIGATIONS_QUERY_KEY, "stats"],
-    queryFn: () => mockInvestigationsService.getInvestigationStats(),
-    staleTime: 5 * 60 * 1000,
+    queryKey: [INV_KEY, 'notes', investigationId],
+    queryFn: () => investigationsService.getNotes(investigationId),
+    enabled: !!investigationId,
+    staleTime: 2 * 60 * 1000,
   });
 }
+// Fix 17: useInvestigationStats removed — no backend endpoint
 
-/**
- * Hook to create a new investigation
- */
+// ─── Mutation hooks ───────────────────────────────────────────────────────────
+
+// Fix 9: payload now requires claimId + fraudScoreId
 export function useCreateInvestigation() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (payload: CreateInvestigationPayload) =>
-      mockInvestigationsService.createInvestigation(payload),
+      investigationsService.createInvestigation(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [INVESTIGATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INV_KEY, 'list'] });
     },
   });
 }
-
-/**
- * Hook to update investigation status
- */
+// Fix 18: payload is now { status, resolutionSummary?, estimatedLoss? }
 export function useUpdateInvestigationStatus() {
   const queryClient = useQueryClient();
-
+  return useMutation({
+    mutationFn: ({
+      investigationId,
+      payload,
+    }: {
+      investigationId: string;
+      payload: UpdateStatusPayload;
+    }) => investigationsService.updateStatus(investigationId, payload),
+    onSuccess: (_data, { investigationId }) => {
+      // Fix 22: scoped invalidation
+      queryClient.invalidateQueries({ queryKey: [INV_KEY, 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
+    },
+  });
+}
+// Fix 19: payload is now { progress, findings? }
+export function useUpdateInvestigationProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      investigationId,
+      payload,
+    }: {
+      investigationId: string;
+      payload: UpdateProgressPayload;
+    }) => investigationsService.updateProgress(investigationId, payload),
+    onSuccess: (_data, { investigationId }) => {
+      queryClient.invalidateQueries({ queryKey: [INV_KEY, 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
+    },
+  });
+}
+export function useAssignInvestigation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      investigationId,
+      assignedTo,
+    }: {
+      investigationId: string;
+      assignedTo: string;
+    }) =>
+      investigationsService.assignInvestigation(investigationId, assignedTo),
+    onSuccess: (_data, { investigationId }) => {
+      queryClient.invalidateQueries({ queryKey: [INV_KEY, 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
+    },
+  });
+}
+// Fix 20: payload is now { fileName, fileType, fileUrl } — uploadedBy removed
+export function useUploadEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      investigationId,
+      payload,
+    }: {
+      investigationId: string;
+      payload: UploadEvidencePayload;
+    }) => investigationsService.uploadEvidence(investigationId, payload),
+    onSuccess: (_data, { investigationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
+    },
+  });
+}
+export function useAddNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      investigationId,
+      note,
+    }: {
+      investigationId: string;
+      note: string;
+    }) => investigationsService.addNote(investigationId, note),
+    onSuccess: (_data, { investigationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'notes', investigationId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
+    },
+  });
+}
+// Fix 21: no dedicated close endpoint — delegates to updateStatus with terminal state
+export function useCloseInvestigation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       investigationId,
       status,
+      resolutionSummary,
+      estimatedLoss,
     }: {
       investigationId: string;
-      status: InvestigationStatus;
-    }) => mockInvestigationsService.updateInvestigationStatus(investigationId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [INVESTIGATIONS_QUERY_KEY] });
-    },
-  });
-}
-
-/**
- * Hook to update investigation progress
- */
-export function useUpdateInvestigationProgress() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      investigationId,
-      progress,
-      notes,
-    }: {
-      investigationId: string;
-      progress: number;
-      notes?: string;
+      status: 'CONFIRMED_FRAUD' | 'CLEARED' | 'CLOSED';
+      resolutionSummary: string;
+      estimatedLoss?: number;
     }) =>
-      mockInvestigationsService.updateInvestigationProgress(
+      investigationsService.closeInvestigation(
         investigationId,
-        progress,
-        notes
+        status,
+        resolutionSummary,
+        estimatedLoss,
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [INVESTIGATIONS_QUERY_KEY] });
-    },
-  });
-}
-
-/**
- * Hook to add evidence to investigation
- */
-export function useAddInvestigationEvidence() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      investigationId,
-      evidence,
-    }: {
-      investigationId: string;
-      evidence: {
-        fileName: string;
-        fileType: string;
-        fileUrl: string;
-        uploadedBy: string;
-        description?: string;
-      };
-    }) =>
-      mockInvestigationsService.addInvestigationEvidence(investigationId, evidence),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [INVESTIGATIONS_QUERY_KEY] });
-    },
-  });
-}
-
-/**
- * Hook to close investigation with outcome
- */
-export function useCloseInvestigation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      investigationId,
-      outcome,
-      notes,
-    }: {
-      investigationId: string;
-      outcome: Investigation["outcome"];
-      notes?: string;
-    }) =>
-      mockInvestigationsService.closeInvestigation(investigationId, outcome, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [INVESTIGATIONS_QUERY_KEY] });
+    onSuccess: (_data, { investigationId }) => {
+      queryClient.invalidateQueries({ queryKey: [INV_KEY, 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: [INV_KEY, 'detail', investigationId],
+      });
     },
   });
 }

@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { claimFilterSchema, ClaimFilterValues } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -13,20 +17,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from '@/components/ui/form';
-import { Card } from '@/components/ui/card';
-import { Search, X } from 'lucide-react';
 import { KENYAN_COUNTIES } from '@/lib/constants';
+import { claimFilterSchema, ClaimFilterValues } from '@/lib/validations';
+import { ClaimFilterParams } from '@/types/claim';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 interface ClaimFiltersProps {
-  onFilter: (filters: Partial<ClaimFilterValues>) => void;
+  onFilter: (filters: Partial<ClaimFilterParams>) => void;
   onReset?: () => void;
+}
+
+/**
+ * Strip empty strings from form values before passing to the parent.
+ * ClaimFilterValues allows '' for Select resets (Zod needs a value),
+ * but ClaimFilterParams.status is ClaimStatus which has no empty string.
+ */
+function toFilterParams(values: ClaimFilterValues): Partial<ClaimFilterParams> {
+  return {
+    ...(values.search ? { search: values.search } : {}),
+    ...(values.status ? { status: values.status } : {}),
+    ...(values.riskLevel ? { riskLevel: values.riskLevel } : {}),
+    ...(values.county ? { county: values.county } : {}),
+    ...(values.providerId ? { providerId: values.providerId } : {}),
+  };
 }
 
 export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
@@ -39,13 +55,11 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
       status: '',
       riskLevel: '',
       county: '',
-      page: 1,
-      pageSize: 25,
     },
   });
 
   const handleSubmit = (values: ClaimFilterValues) => {
-    onFilter(values);
+    onFilter(toFilterParams(values));
   };
 
   const handleReset = () => {
@@ -89,8 +103,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
               </FormItem>
             )}
           />
-          {/* Filters Row */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {/* Status */}
             <FormField
               control={form.control}
@@ -113,9 +126,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
                       <SelectItem value='approved'>Approved</SelectItem>
                       <SelectItem value='rejected'>Rejected</SelectItem>
                       <SelectItem value='flagged'>Flagged</SelectItem>
-                      <SelectItem value='under_investigation'>
-                        Under Investigation
-                      </SelectItem>
+                      <SelectItem value='under_review'>Under Review</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
@@ -176,34 +187,7 @@ export function ClaimFilters({ onFilter, onReset }: ClaimFiltersProps) {
                 </FormItem>
               )}
             />
-            {/* Page Size */}
-            <FormField
-              control={form.control}
-              name='pageSize'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Results Per Page</FormLabel>
-                  <Select
-                    value={String(field.value)}
-                    onValueChange={v => field.onChange(parseInt(v))}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value='10'>10</SelectItem>
-                      <SelectItem value='25'>25</SelectItem>
-                      <SelectItem value='50'>50</SelectItem>
-                      <SelectItem value='100'>100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
           </div>
-          {/* Buttons */}
           <div className='flex gap-2 pt-2'>
             <Button type='submit' className='bg-blue-600 hover:bg-blue-700'>
               Apply Filters

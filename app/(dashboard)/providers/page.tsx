@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card } from '@/components/ui/card';
+import { Pagination } from '@/components/shared/Pagination';
+import { RiskScoreBadge } from '@/components/shared/RiskScoreBadge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -20,24 +29,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { ProviderFilterParams } from '@/types/provider';
-import { useProviders } from '@/hooks/queries/useProviders';
-import { RiskScoreBadge } from '@/components/shared/RiskScoreBadge';
-import { formatCurrency, formatPercentage } from '@/lib/helpers';
-import { KENYAN_COUNTIES, FACILITY_TYPES } from '@/lib/constants';
-import { Pagination } from '@/components/shared/Pagination';
-import Link from 'next/link';
-import { Building2, Plus } from 'lucide-react';
+import { useAddProvider, useProviders } from '@/hooks/queries/useProviders';
 import { useToast } from '@/hooks/use-toast';
-import { mockProvidersService } from '@/services/mockProvidersService';
+import { FACILITY_TYPES, KENYAN_COUNTIES } from '@/lib/constants';
+import { formatPercentage } from '@/lib/helpers';
+import { FacilityType, ProviderFilterParams } from '@/types/provider';
+import { Building2, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 export default function ProvidersPage() {
   const { toast } = useToast();
@@ -48,78 +47,78 @@ export default function ProvidersPage() {
   const [facilityType, setFacilityType] = useState('');
   const [riskLevel, setRiskLevel] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    shaProviderCode: '', // Fix 10: required field added
     name: '',
-    code: '',
     facilityType: '',
     county: '',
-    contact: '',
+    phone: '',
     email: '',
     bedCapacity: '',
   });
 
-  // Build filters object
+  // Fix 11: facilityType is already stored UPPERCASE from the Select values
   const filters: ProviderFilterParams = {};
   if (search) filters.search = search;
-  if (county && county !== 'all') filters.county = county;
-  if (facilityType && facilityType !== 'all')
-    filters.facilityType = facilityType as any;
-  if (riskLevel && riskLevel !== 'all') filters.riskLevel = riskLevel as any;
+  if (county) filters.county = county;
+  if (facilityType) filters.facilityType = facilityType as FacilityType;
+  if (riskLevel)
+    filters.riskLevel = riskLevel as ProviderFilterParams['riskLevel'];
 
-  // Use React Query hook for providers data
   const { data: providersResponse, isLoading } = useProviders(
     filters,
     page,
     pageSize,
   );
 
+  // Fix 21: replaced mockProvidersService.addProvider with useAddProvider hook
+  const addProvider = useAddProvider();
+
   const handleAddProvider = async () => {
-    if (!formData.name || !formData.facilityType || !formData.county) {
+    if (
+      !formData.name ||
+      !formData.shaProviderCode ||
+      !formData.facilityType ||
+      !formData.county
+    ) {
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description:
+          'Provider Name, SHA Code, Facility Type and County are required.',
         variant: 'destructive',
       });
       return;
     }
-    setIsSubmitting(true);
     try {
-      await mockProvidersService.addProvider({
+      await addProvider.mutateAsync({
+        shaProviderCode: formData.shaProviderCode,
         name: formData.name,
-        code: formData.code,
-        facilityType: formData.facilityType as any,
-        countyName: formData.county,
-        contact: formData.contact,
-        email: formData.email,
+        facilityType: formData.facilityType as FacilityType,
+        county: formData.county,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
         bedCapacity: formData.bedCapacity
           ? parseInt(formData.bedCapacity)
           : undefined,
       });
-
       setAddDialogOpen(false);
       setFormData({
+        shaProviderCode: '',
         name: '',
-        code: '',
         facilityType: '',
         county: '',
-        contact: '',
+        phone: '',
         email: '',
         bedCapacity: '',
       });
-      toast({
-        title: 'Success',
-        description: 'Provider added successfully',
-      });
-    } catch (error) {
-      console.error('[v0] Error adding provider:', error);
+      toast({ title: 'Success', description: 'Provider added successfully.' });
+    } catch (err) {
+      console.error('[providers] add error:', err);
       toast({
         title: 'Error',
-        description: 'Failed to add provider',
+        description: 'Failed to add provider.',
         variant: 'destructive',
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -172,6 +171,7 @@ export default function ProvidersPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Fix 11: FACILITY_TYPES must have UPPERCASE values e.g. { value: 'CLINIC', label: 'Clinic' } */}
             <Select
               value={facilityType || 'all'}
               onValueChange={v => {
@@ -252,8 +252,7 @@ export default function ProvidersPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : !providersResponse?.data ||
-                providersResponse.data.length === 0 ? (
+              ) : !providersResponse?.data?.length ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
@@ -271,27 +270,31 @@ export default function ProvidersPage() {
                     <TableCell className='font-medium'>
                       <div>
                         <p className='text-gray-900'>{provider.name}</p>
-                        <p className='text-xs text-gray-500'>{provider.code}</p>
+                        <p className='text-xs text-gray-500'>
+                          {provider.shaProviderCode}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <span className='text-sm text-gray-700 capitalize'>
-                        {provider.facilityType}
+                        {provider.facilityType
+                          ?.replace(/_/g, ' ')
+                          .toLowerCase() ?? 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell className='text-gray-700'>
-                      {provider.countyName}
+                      {provider.county ?? 'N/A'}
                     </TableCell>
                     <TableCell className='text-right font-medium'>
-                      {provider.statistics.totalClaims.toLocaleString()}
+                      {provider.totalClaims.toLocaleString()}
                     </TableCell>
                     <TableCell className='text-right'>
-                      {formatPercentage(provider.statistics.flaggedPercentage)}
+                      {formatPercentage(provider.flaggedPercentage)}
                     </TableCell>
                     <TableCell>
                       <RiskScoreBadge
-                        score={provider.riskScore}
-                        level={provider.riskLevel}
+                        score={provider.riskScore ?? 0}
+                        level={provider.riskLevel ?? 'low'}
                         size='sm'
                       />
                     </TableCell>
@@ -325,8 +328,8 @@ export default function ProvidersPage() {
             <DialogHeader>
               <DialogTitle>Add New Provider</DialogTitle>
               <DialogDescription>
-                Fill in the provider information to add a new healthcare
-                facility to the system.
+                Fill in the provider information to register a new healthcare
+                facility.
               </DialogDescription>
             </DialogHeader>
             <div className='space-y-4'>
@@ -344,15 +347,19 @@ export default function ProvidersPage() {
                     className='mt-1'
                   />
                 </div>
+                {/* Fix 10: SHA Provider Code is required — added field */}
                 <div>
                   <label className='text-sm font-medium text-gray-700'>
-                    Provider Code
+                    SHA Provider Code *
                   </label>
                   <Input
                     placeholder='E.g., NHF-00001'
-                    value={formData.code}
+                    value={formData.shaProviderCode}
                     onChange={e =>
-                      setFormData({ ...formData, code: e.target.value })
+                      setFormData({
+                        ...formData,
+                        shaProviderCode: e.target.value,
+                      })
                     }
                     className='mt-1'
                   />
@@ -409,9 +416,9 @@ export default function ProvidersPage() {
                   </label>
                   <Input
                     placeholder='E.g., +254712345678'
-                    value={formData.contact}
+                    value={formData.phone}
                     onChange={e =>
-                      setFormData({ ...formData, contact: e.target.value })
+                      setFormData({ ...formData, phone: e.target.value })
                     }
                     className='mt-1'
                   />
@@ -421,8 +428,8 @@ export default function ProvidersPage() {
                     Email
                   </label>
                   <Input
-                    placeholder='E.g., info@provider.ke'
                     type='email'
+                    placeholder='E.g., info@provider.ke'
                     value={formData.email}
                     onChange={e =>
                       setFormData({ ...formData, email: e.target.value })
@@ -436,8 +443,8 @@ export default function ProvidersPage() {
                   Bed Capacity
                 </label>
                 <Input
-                  placeholder='Number of beds'
                   type='number'
+                  placeholder='Number of beds'
                   value={formData.bedCapacity}
                   onChange={e =>
                     setFormData({ ...formData, bedCapacity: e.target.value })
@@ -450,12 +457,15 @@ export default function ProvidersPage() {
               <Button
                 variant='outline'
                 onClick={() => setAddDialogOpen(false)}
-                disabled={isSubmitting}
+                disabled={addProvider.isPending}
               >
                 Cancel
               </Button>
-              <Button onClick={handleAddProvider} disabled={isSubmitting}>
-                {isSubmitting ? 'Adding...' : 'Add Provider'}
+              <Button
+                onClick={handleAddProvider}
+                disabled={addProvider.isPending}
+              >
+                {addProvider.isPending ? 'Adding...' : 'Add Provider'}
               </Button>
             </DialogFooter>
           </DialogContent>

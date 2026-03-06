@@ -1,43 +1,73 @@
-"use client";
+'use client';
 
-import { RiskLevel } from "@/types/claim";
-import { getRiskColor, getRiskBgColor } from "@/lib/helpers";
-import { cn } from "@/lib/utils";
+import { getRiskBgColor, getRiskColor } from '@/lib/helpers';
+import { cn } from '@/lib/utils';
+
+// Fix 1: widened from RiskLevel only to accept AlertSeverity values too.
+// Backend RiskLevel:     LOW | MEDIUM | HIGH | CRITICAL   (claim scores)
+// Backend AlertSeverity: INFO | WARNING | HIGH | CRITICAL (alert badges)
+// Both flow through this component so the prop accepts the union.
+type BadgeLevel = 'low' | 'medium' | 'high' | 'critical' | 'info' | 'warning';
 
 interface RiskScoreBadgeProps {
   score: number;
-  level: RiskLevel;
-  size?: "sm" | "md" | "lg";
+  level: BadgeLevel;
+  size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
+  // Fix 2: hideScore was used in AlertsPage but not declared — added here
+  hideScore?: boolean;
 }
+
+// Normalise AlertSeverity → RiskLevel for colour helpers
+// INFO/WARNING map to "low"/"medium" so they still get a sensible colour
+function normaliseLevel(
+  level: BadgeLevel,
+): 'low' | 'medium' | 'high' | 'critical' {
+  switch (level) {
+    case 'info':
+      return 'low';
+    case 'warning':
+      return 'medium';
+    default:
+      return level as 'low' | 'medium' | 'high' | 'critical';
+  }
+}
+
+// Label shown next to the score — capitalised display string
+const LEVEL_LABELS: Record<BadgeLevel, string> = {
+  info: 'Info',
+  warning: 'Warning',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  critical: 'Critical',
+};
 
 export function RiskScoreBadge({
   score,
   level,
-  size = "md",
+  size = 'md',
   showLabel = true,
+  hideScore = false,
 }: RiskScoreBadgeProps) {
-  const color = getRiskColor(level);
-  const bgColor = getRiskBgColor(level);
-
+  const normLevel = normaliseLevel(level);
+  const color = getRiskColor(normLevel);
+  const bgColor = getRiskBgColor(normLevel);
   const sizeClass = {
-    sm: "px-2 py-1 text-xs",
-    md: "px-3 py-1.5 text-sm",
-    lg: "px-4 py-2 text-base",
+    sm: 'px-2 py-1 text-xs',
+    md: 'px-3 py-1.5 text-sm',
+    lg: 'px-4 py-2 text-base',
   }[size];
-
-  const label = level.charAt(0).toUpperCase() + level.slice(1);
-
   return (
     <div
       className={cn(
-        "rounded-full font-semibold inline-flex items-center gap-1",
-        sizeClass
+        'rounded-full font-semibold inline-flex items-center gap-1',
+        sizeClass,
       )}
-      style={{ backgroundColor: bgColor, color: color }}
+      style={{ backgroundColor: bgColor, color }}
     >
-      <span className="font-bold">{score}</span>
-      {showLabel && <span>{label}</span>}
+      {!hideScore && <span className='font-bold'>{score}</span>}
+      {showLabel && <span>{LEVEL_LABELS[level]}</span>}
     </div>
   );
 }

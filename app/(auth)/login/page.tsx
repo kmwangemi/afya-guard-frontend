@@ -11,7 +11,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useLogin } from '@/hooks/queries/useLogin';
+import { useLogin } from '@/hooks/queries/useAuth';
 import { handleApiError } from '@/lib/api';
 import { LoginFormValues, loginSchema } from '@/lib/validations';
 import { zodResolver } from '@hookform/resolvers/zod';
