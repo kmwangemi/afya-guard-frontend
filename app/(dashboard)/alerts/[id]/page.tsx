@@ -205,17 +205,15 @@ export default function AlertDetailsPage() {
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Severity</p>
-                  {/* Fix 3+4: severity from alertSummary; no riskScore on list — severity drives badge */}
                   <RiskScoreBadge
                     score={fraud.riskScorePercentage ?? 0}
-                    level={summary.severity.toLowerCase() as any}
+                    level={summary.severity}
                     size='sm'
                   />
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Status</p>
-                  {/* Fix 5: was alert.status — use summary.status */}
-                  <StatusBadge status={summary.status} size='sm' />
+                  <StatusBadge status={summary.status} type='alert' size='sm' />
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Created</p>
@@ -409,8 +407,6 @@ export default function AlertDetailsPage() {
                 </div>
               </Card>
             )}
-            {/* Timeline — Fix 15: was alert.resolvedAt (no such field)
-                Now renders alert.timeline[] from backend */}
             <Card className='p-6'>
               <h3 className='text-lg font-semibold text-gray-900 mb-4'>
                 Timeline

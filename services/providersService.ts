@@ -1,12 +1,11 @@
 import { api } from '@/lib/api';
-import { PaginatedResponse } from '@/types/common';
+import { PaginatedResponse, RiskLevel } from '@/types/common';
 import {
   FacilityType,
   ProviderCreateParams,
   ProviderDetail,
   ProviderFilterParams,
   ProviderListItem,
-  RiskLevel,
 } from '@/types/provider';
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
@@ -101,7 +100,7 @@ function mapListItem(a: ApiProviderListItem): ProviderListItem {
     totalClaims: a.total_claims,
     flaggedPercentage: a.flagged_percentage,
     riskScore: a.risk_score,
-    riskLevel: (a.risk_level?.toLowerCase() as RiskLevel) ?? null,
+    riskLevel: (a.risk_level as RiskLevel) ?? null,
     accreditationStatus:
       a.accreditation_status as ProviderListItem['accreditationStatus'],
     highRiskFlag: a.high_risk_flag,
@@ -115,7 +114,7 @@ function mapDetail(a: ApiProviderDetail): ProviderDetail {
     name: a.name,
     header: {
       riskScore: a.header.risk_score,
-      riskLevel: (a.header.risk_level?.toLowerCase() as RiskLevel) ?? null,
+      riskLevel: (a.header.risk_level as RiskLevel) ?? null,
       totalClaims: a.header.total_claims,
       flaggedClaimsPercentage: a.header.flagged_claims_percentage,
       confirmedFraudCount: a.header.confirmed_fraud_count,
@@ -162,7 +161,6 @@ function mapDetail(a: ApiProviderDetail): ProviderDetail {
 
 export const providersService = {
   // GET /api/v1/providers
-  // Fix 11: facilityType sent UPPERCASE to match backend FacilityType enum
   getProviders: async (
     filters?: ProviderFilterParams,
     page: number = 1,
@@ -175,8 +173,8 @@ export const providersService = {
     if (filters?.county) params.set('county', filters.county);
     if (filters?.facilityType)
       params.set('facility_type', filters.facilityType); // already UPPERCASE
-    if (filters?.riskLevel)
-      params.set('risk_level', filters.riskLevel.toUpperCase());
+    // FIX [WRONG-1]: removed .toUpperCase() — RiskLevel is already uppercase
+    if (filters?.riskLevel) params.set('risk_level', filters.riskLevel);
     const response = await api.get<ApiPaginatedProviders>(
       `/providers?${params}`,
     );
@@ -191,13 +189,10 @@ export const providersService = {
       },
     };
   },
-  // GET /api/v1/providers/{id} — returns ProviderDetailResponse (nested)
-  // Fix 6: was returning flat Provider from mock; now maps full ProviderDetailResponse
   getProviderById: async (id: string): Promise<ProviderDetail> => {
     const detail = await api.get<ApiProviderDetail>(`/providers/${id}`);
     return mapDetail(detail);
   },
-  // Fix 7: no /providers/{id}/claims endpoint — use GET /claims?provider_id=
   getProviderClaims: async (
     providerId: string,
     page: number = 1,
@@ -209,21 +204,17 @@ export const providersService = {
     params.set('page_size', String(pageSize));
     return api.get(`/claims?${params}`);
   },
-  // Fix 9: no /providers/suspend endpoint — PATCH /providers/{id} with accreditation_status
   suspendProvider: async (
     providerId: string,
     reason: string,
   ): Promise<ProviderDetail> => {
     await api.patch<ApiProviderResponse>(`/providers/${providerId}`, {
       accreditation_status: 'SUSPENDED',
-      // reason stored as a note — backend ProviderUpdate doesn't have a notes field,
-      // so log it client-side; the status change is the meaningful action
     });
     console.info(`[providers] suspended ${providerId}: ${reason}`);
     const detail = await api.get<ApiProviderDetail>(`/providers/${providerId}`);
     return mapDetail(detail);
   },
-  // Fix 9: no /providers/flag endpoint — PATCH /providers/{id} with high_risk_flag: true
   flagForReview: async (
     providerId: string,
     reason: string,
@@ -235,8 +226,6 @@ export const providersService = {
     const detail = await api.get<ApiProviderDetail>(`/providers/${providerId}`);
     return mapDetail(detail);
   },
-  // POST /api/v1/providers
-  // Fix 10: sha_provider_code is required by backend ProviderCreate schema
   addProvider: async (
     data: ProviderCreateParams,
   ): Promise<ApiProviderResponse> => {
@@ -250,7 +239,6 @@ export const providersService = {
       bed_capacity: data.bedCapacity,
     });
   },
-  // PATCH /api/v1/providers/{id}
   updateProvider: async (
     providerId: string,
     data: Partial<ProviderCreateParams>,

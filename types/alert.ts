@@ -2,8 +2,6 @@
 // Aligned to backend AlertType, AlertStatus, AlertSeverity enums and
 // AlertListItem / AlertDetailResponse schemas
 
-// Fix 1+3: was "open"|"assigned"|"investigating"|"resolved"|"closed"
-// Backend AlertStatus enum is UPPERCASE, "assigned" and "closed" don't exist
 export type AlertStatus =
   | 'OPEN'
   | 'ACKNOWLEDGED'
@@ -12,11 +10,11 @@ export type AlertStatus =
   | 'RESOLVED'
   | 'EXPIRED';
 
-// Fix 2+3: completely wrong — 7 bad values. Backend has 13 UPPERCASE types
 export type AlertType =
   | 'HIGH_RISK_SCORE'
   | 'CRITICAL_RISK_SCORE'
   | 'DUPLICATE_CLAIM'
+  | 'GHOST_PROVIDER'
   | 'PHANTOM_PATIENT'
   | 'UPCODING_DETECTED'
   | 'PROVIDER_ANOMALY'
@@ -28,15 +26,13 @@ export type AlertType =
   | 'MODEL_CONFIDENCE_LOW'
   | 'RESUBMISSION_PATTERN';
 
-// Fix 4: severity was RiskLevel ("low"|"medium"|"high"|"critical") imported from claim.ts
-// Backend AlertSeverity is its own enum: INFO|WARNING|HIGH|CRITICAL
 export type AlertSeverity = 'INFO' | 'WARNING' | 'HIGH' | 'CRITICAL';
 
 // ── List item (GET /alerts) ───────────────────────────────────────────────────
 export interface AlertListItem {
   id: string;
   alertNumber: string;
-  typeDisplay: string; // human-readable, e.g. "Duplicate Claim"
+  typeDisplay: string;
   alertType: AlertType;
   providerName: string | null;
   providerId: string | null;
@@ -83,7 +79,6 @@ export interface TimelineEvent {
   note: string | null;
 }
 
-// Fix 5: replaces flat Alert interface with nested AlertDetail matching AlertDetailResponse
 export interface AlertDetail {
   id: string;
   alertNumber: string;
@@ -102,12 +97,11 @@ export interface AlertDetail {
 }
 
 // ── Filter params ─────────────────────────────────────────────────────────────
-// Fix 6: dateFrom/dateTo → raisedFrom/raisedTo as ISO strings (not Date objects)
-//        providerId/claimId removed — not query params on GET /alerts list route
 export interface AlertFilterParams {
   search?: string;
   severity?: AlertSeverity;
   status?: AlertStatus;
+  // FIX [WRONG-1]: added alertType — was missing but used in alertsService.getAlerts()
   alertType?: AlertType;
   assignedTo?: string; // UUID string
   raisedFrom?: string; // ISO datetime string
@@ -116,20 +110,17 @@ export interface AlertFilterParams {
 
 // ── Mutation payloads ─────────────────────────────────────────────────────────
 
-// Fix 11: PATCH /alerts/{id}/status
 export interface AlertStatusUpdatePayload {
   status: AlertStatus;
   note?: string;
   isFalsePositive?: boolean;
 }
 
-// Fix 12: PATCH /alerts/{id}/assign — backend only accepts { user_id }
-// (investigatorName was wrong — not a field in AlertAssignRequest)
+// Backend only accepts { user_id }
 export interface AlertAssignPayload {
-  userId: string; // UUID of the analyst
+  userId: string;
 }
 
-// Fix 13: PATCH /alerts/{id}/resolve — was { resolutionNotes, actionTaken }
 // Backend AlertResolveRequest: { resolution_note, is_false_positive }
 export interface AlertResolvePayload {
   resolutionNote: string; // required, min 5 chars

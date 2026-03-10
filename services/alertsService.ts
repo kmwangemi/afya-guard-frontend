@@ -146,6 +146,10 @@ function mapDetail(a: ApiAlertDetail): AlertDetail {
 
 export const alertsService = {
   // GET /api/v1/alerts
+  // Route accepts: search, severity, status, alert_type, page, page_size ONLY.
+  // FIX [CRITICAL-1]: removed assigned_to, raised_from, raised_to — the route handler
+  // does NOT declare these as Query() params; they exist only on the internal
+  // AlertListFilter schema and are silently ignored by FastAPI.
   getAlerts: async (
     filters: AlertFilterParams = {},
     page: number = 1,
@@ -158,9 +162,6 @@ export const alertsService = {
     if (filters.severity) params.set('severity', filters.severity);
     if (filters.status) params.set('status', filters.status);
     if (filters.alertType) params.set('alert_type', filters.alertType);
-    if (filters.assignedTo) params.set('assigned_to', filters.assignedTo);
-    if (filters.raisedFrom) params.set('raised_from', filters.raisedFrom);
-    if (filters.raisedTo) params.set('raised_to', filters.raisedTo);
     const response = await api.get<ApiPaginatedAlerts>(`/alerts?${params}`);
     return {
       data: response.items.map(mapListItem),
@@ -178,7 +179,7 @@ export const alertsService = {
     const detail = await api.get<ApiAlertDetail>(`/alerts/${id}`);
     return mapDetail(detail);
   },
-  // Fix 9: no getCriticalAlerts endpoint — use GET /alerts?severity=CRITICAL
+  // No getCriticalAlerts endpoint — use GET /alerts?severity=CRITICAL
   getCriticalAlerts: async (limit: number = 10): Promise<AlertListItem[]> => {
     const params = new URLSearchParams();
     params.set('severity', 'CRITICAL');
@@ -186,7 +187,7 @@ export const alertsService = {
     const response = await api.get<ApiPaginatedAlerts>(`/alerts?${params}`);
     return response.items.map(mapListItem);
   },
-  // Fix 11: PATCH /alerts/{id}/status with { status, note, is_false_positive }
+  // PATCH /alerts/{id}/status — { status, note, is_false_positive }
   updateAlertStatus: async (
     id: string,
     payload: AlertStatusUpdatePayload,
@@ -198,7 +199,7 @@ export const alertsService = {
     });
     return mapDetail(detail);
   },
-  // PATCH /alerts/{id}/acknowledge
+  // PATCH /alerts/{id}/acknowledge — { note? }
   acknowledgeAlert: async (id: string, note?: string): Promise<AlertDetail> => {
     const detail = await api.patch<ApiAlertDetail>(
       `/alerts/${id}/acknowledge`,
@@ -206,8 +207,7 @@ export const alertsService = {
     );
     return mapDetail(detail);
   },
-  // Fix 13: PATCH /alerts/{id}/resolve with { resolution_note, is_false_positive }
-  // was { resolutionNotes, actionTaken } — actionTaken doesn't exist in backend
+  // PATCH /alerts/{id}/resolve — { resolution_note, is_false_positive }
   resolveAlert: async (
     id: string,
     payload: AlertResolvePayload,
@@ -218,8 +218,7 @@ export const alertsService = {
     });
     return mapDetail(detail);
   },
-  // Fix 12: PATCH /alerts/{id}/assign with { user_id }
-  // was { investigatorId, investigatorName } — backend only takes { user_id: UUID }
+  // PATCH /alerts/{id}/assign — { user_id }
   assignAlert: async (
     id: string,
     payload: AlertAssignPayload,

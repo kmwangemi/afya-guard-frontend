@@ -32,18 +32,14 @@ import { useState } from 'react';
 export default function AlertsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  // Fix 25: search was captured but never passed to filters
   const [search, setSearch] = useState('');
   const [severity, setSeverity] = useState('');
   const [status, setStatus] = useState('');
 
   const filters: AlertFilterParams = {};
-  // Fix 25: now included
   if (search) filters.search = search;
-  // Fix 19: severity values must be UPPERCASE AlertSeverity
   if (severity && severity !== 'all')
     filters.severity = severity as AlertSeverity;
-  // Fix 20: status values must be UPPERCASE AlertStatus
   if (status && status !== 'all') filters.status = status as AlertStatus;
 
   const { data: alertsResponse, isLoading } = useAlerts(
@@ -67,7 +63,6 @@ export default function AlertsPage() {
         {/* Filters */}
         <Card className='p-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-            {/* Fix 25: search wired to filters */}
             <Input
               placeholder='Search alerts...'
               value={search}
@@ -76,7 +71,6 @@ export default function AlertsPage() {
                 setPage(1);
               }}
             />
-            {/* Fix 19: UPPERCASE AlertSeverity values; added INFO and WARNING */}
             <Select
               value={severity || 'all'}
               onValueChange={v => {
@@ -95,7 +89,6 @@ export default function AlertsPage() {
                 <SelectItem value='CRITICAL'>Critical</SelectItem>
               </SelectContent>
             </Select>
-            {/* Fix 20: UPPERCASE AlertStatus values; removed "assigned"/"closed", added ACKNOWLEDGED/ESCALATED/EXPIRED */}
             <Select
               value={status || 'all'}
               onValueChange={v => {
@@ -179,7 +172,6 @@ export default function AlertsPage() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {/* Fix 21: alert.type → alert.alertType (field renamed in AlertListItem) */}
                       <span className='text-sm text-gray-700'>
                         {ALERT_TYPE_LABELS[alert.alertType] ?? alert.alertType}
                       </span>
@@ -188,25 +180,26 @@ export default function AlertsPage() {
                       {alert.providerName ?? '—'}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={alert.status} size='sm' />
+                      <StatusBadge
+                        status={alert.status}
+                        type='alert'
+                        size='sm'
+                      />
                     </TableCell>
                     <TableCell>
-                      {/* Fix 22: riskScore not in AlertListItem — severity drives badge, score omitted */}
                       <RiskScoreBadge
                         score={0}
-                        level={alert.severity.toLowerCase() as any}
+                        level={alert.severity}
                         size='sm'
                         hideScore
                       />
                     </TableCell>
                     <TableCell className='text-right font-medium'>
-                      {/* Fix 23: alert.estimatedFraudAmount → alert.fraudAmount */}
                       {alert.fraudAmount != null
                         ? formatCurrency(alert.fraudAmount)
                         : '—'}
                     </TableCell>
                     <TableCell className='text-sm text-gray-600'>
-                      {/* Fix 24: createdAt is ISO string — wrap with new Date() */}
                       {formatDateTime(new Date(alert.createdAt))}
                     </TableCell>
                     <TableCell className='text-right'>

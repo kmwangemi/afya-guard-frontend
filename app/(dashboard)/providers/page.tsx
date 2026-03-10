@@ -294,7 +294,7 @@ export default function ProvidersPage() {
                     <TableCell>
                       <RiskScoreBadge
                         score={provider.riskScore ?? 0}
-                        level={provider.riskLevel ?? 'low'}
+                        level={provider.riskLevel ?? 'LOW'}
                         size='sm'
                       />
                     </TableCell>
