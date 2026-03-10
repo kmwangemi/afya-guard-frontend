@@ -1,3 +1,5 @@
+import { RiskLevel } from './common';
+
 // Fix 11: backend FacilityType enum is UPPERCASE
 export type FacilityType =
   | 'PUBLIC_HOSPITAL'
@@ -7,8 +9,6 @@ export type FacilityType =
   | 'LABORATORY'
   | 'PHARMACY'
   | 'SPECIALIST_CENTER';
-
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export type AccreditationStatus =
   | 'ACTIVE'

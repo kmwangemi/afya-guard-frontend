@@ -16,6 +16,8 @@ export interface DecodedToken {
   exp: number;
 }
 
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export interface TrendData {
   date: string;
   totalClaims: number;

@@ -1,17 +1,15 @@
 // ─── Claim domain types ───────────────────────────────────────────────────────
 // Aligned to backend ClaimStatus enum, ClaimDetailResponse, and FraudAnalysis schemas.
 
-// Fix 1: "under_investigation" → "under_review" to match backend UNDER_REVIEW enum
-// Fix 2: added "paid" which the backend supports
-export type ClaimStatus =
-  | 'pending' // SUBMITTED
-  | 'approved' // APPROVED
-  | 'rejected' // REJECTED
-  | 'flagged' // FLAGGED
-  | 'under_review' // UNDER_REVIEW  ← was "under_investigation"
-  | 'paid'; // PAID
+import { RiskLevel } from '@/types/common';
 
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type ClaimStatus =
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'FLAGGED'
+  | 'UNDER_REVIEW'
+  | 'PAID';
 
 export interface FraudFlag {
   id: string;
@@ -47,19 +45,17 @@ export interface Claim {
   countyName: string;
   facilityType: string;
   notes?: string;
-  // Backend-driven: which action buttons to show for this claim's current state
   availableActions?: Array<
     'approve' | 'reject' | 'create_investigation' | 'assign'
   >;
 }
 
-// Fix 3: dateFrom/dateTo must be string — Date objects cannot be serialised as URL query params
 export interface ClaimFilterParams {
   search?: string;
   status?: ClaimStatus;
   riskLevel?: RiskLevel;
-  dateFrom?: string; // ISO date string e.g. "2024-01-01"  ← was Date
-  dateTo?: string; // ISO date string e.g. "2024-12-31"  ← was Date
+  dateFrom?: string; // ISO date string e.g. "2024-01-01"
+  dateTo?: string; // ISO date string e.g. "2024-12-31"
   county?: string;
   providerId?: string;
   minAmount?: number;
@@ -69,7 +65,7 @@ export interface ClaimFilterParams {
 // ─── Fraud Analysis — aligned to backend FraudAnalysis + sub-schemas ──────────
 
 export interface PhantomPatientAnalysis {
-  detected: boolean; // ← was iprsFlag (wrong name)
+  detected: boolean;
   iprsStatus: string; // "VERIFIED" | "NOT_FOUND" | "UNVERIFIED"
   geographicAnomaly: boolean;
   visitFrequencyAnomaly: boolean;
@@ -78,7 +74,7 @@ export interface PhantomPatientAnalysis {
 
 export interface DuplicateClaimAnalysis {
   detected: boolean;
-  duplicateCount: number; // ← was exactMatches+fuzzyMatches (split doesn't exist in backend)
+  duplicateCount: number;
   duplicateClaimIds: string[];
   sameProvider: boolean;
   windowDays: number;
@@ -90,7 +86,6 @@ export interface UpcodingAnalysis {
   flaggedServiceCodes: string[];
   flagReasons: string[];
   confidence: number; // e.g. 14.9 (%)
-  // mlDetectionScore and diagnosisProcedureMatch removed — not in backend schema
 }
 
 export interface ProviderAnomalyAnalysis {
@@ -104,10 +99,12 @@ export interface ClaimAnalysis {
   overallScore: number | null;
   riskLevel: RiskLevel | null;
   phantomPatient: PhantomPatientAnalysis;
-  duplicateClaim: DuplicateClaimAnalysis; // ← was duplicateDetection
+  duplicateClaim: DuplicateClaimAnalysis;
   upcoding: UpcodingAnalysis;
-  providerAnomaly: ProviderAnomalyAnalysis; // ← was missing
-  topFlags: string[]; // ← was missing
+  providerAnomaly: ProviderAnomalyAnalysis;
+  topFlags: string[];
   ruleScore: number | null;
   mlScore: number | null;
+  // FIX [MINOR-2]: added — backend FraudAnalysis exposes per-detector breakdown
+  detectorScores: Record<string, number> | null;
 }
