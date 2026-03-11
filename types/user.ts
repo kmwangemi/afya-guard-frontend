@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'investigator' | 'analyst';
+export type UserRole = 'admin' | 'investigator' | 'auditor' | 'data_scientist';
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 

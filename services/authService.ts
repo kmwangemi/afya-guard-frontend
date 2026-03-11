@@ -23,9 +23,4 @@ export const authService = {
     });
     return response;
   },
-
-  // getCurrentUser: async (): Promise<User> => {
-  //   await new Promise(resolve => setTimeout(resolve, 300));
-  //   return MOCK_USER;
-  // },
 };

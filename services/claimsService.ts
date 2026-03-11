@@ -298,20 +298,19 @@ export const claimsService = {
     return mapDetail(detail);
   },
   exportClaims: async (format: 'csv' | 'excel'): Promise<Blob> => {
-    const response = await apiClient.get(`/claims/export`, {
+    const response = await apiClient.get('/claims/export', {
+      // ✅ apiClient — needs raw response for blob
       params: { format },
       responseType: 'blob',
     });
-    return response.data;
+    return response.data; // ✅ Blob
   },
   uploadClaims: async (file: File): Promise<{ imported: number }> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post<{ imported: number }>(
-      `/claims/upload`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return response.data;
+    return api.post<{ imported: number }>('/claims/upload', formData, {
+      // ✅ api — already unwrapped, no .data needed
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
 };

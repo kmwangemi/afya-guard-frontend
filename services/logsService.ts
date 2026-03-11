@@ -1,28 +1,12 @@
 import { api } from '@/lib/api';
 import { PaginatedResponse } from '@/types/common';
-import { AuditAction, AuditLogEntry, LogFilterParams } from '@/types/log';
-
-interface ApiLogEntry {
-  id: string;
-  user_id: string | null;
-  user_full_name: string | null;
-  user_email: string | null;
-  action: string;
-  entity_type: string | null;
-  entity_id: string | null;
-  audit_log_metadata: Record<string, unknown>;
-  ip_address: string | null;
-  user_agent: string | null;
-  performed_at: string;
-}
-
-interface ApiPaginated {
-  items: ApiLogEntry[];
-  total: number;
-  page: number;
-  page_size: number;
-  pages: number;
-}
+import {
+  ApiLogEntry,
+  ApiPaginated,
+  AuditAction,
+  AuditLogEntry,
+  LogFilterParams,
+} from '@/types/log';
 
 function mapEntry(a: ApiLogEntry): AuditLogEntry {
   return {

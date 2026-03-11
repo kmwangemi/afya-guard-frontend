@@ -1,6 +1,7 @@
 import { Providers } from '@/components/providers/Providers';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Toaster } from 'sonner';
 
 import './globals.css';
 
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang='en'>
       <body className='font-sans antialiased bg-gray-50'>
         <Providers>{children}</Providers>
+        <Toaster position='top-right' richColors closeButton />
       </body>
     </html>
   );

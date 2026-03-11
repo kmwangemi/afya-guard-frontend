@@ -1,30 +1,28 @@
 /**
  * SHA Fraud Detection — Dashboard Service
  *
- * Replaces mockDashboardService with real API calls.
- *
  * Endpoints used:
- *   GET /api/v1/dashboard/stats            → getStats()
- *   GET /api/v1/dashboard/trend?days=N     → getTrendData()
- *   GET /api/v1/dashboard/counties?limit=N → getCountyFraudData()
+ *   GET /api/v1/dashboard/stats              → getStats()
+ *   GET /api/v1/dashboard/trend?days=N       → getTrendData()
+ *   GET /api/v1/dashboard/counties?limit=N   → getCountyFraudData()
  *   GET /api/v1/dashboard/critical-alerts?limit=N → getCriticalAlerts()
- *
- * All calls go through the shared `api` helper which:
- *   - Attaches the JWT Bearer token automatically
- *   - Silently refreshes on 401 and retries
- *   - Extracts `.data` so callers receive the typed payload directly
+ *   GET /api/v1/dashboard/risk-distribution  → getRiskDistribution()
+ *   GET /api/v1/dashboard?trend_days=N       → getDashboard()
  */
 
 import { api, handleApiError } from '@/lib/api';
-import { Alert } from '@/types/alert';
+import {
+  AlertListItem,
+  AlertSeverity,
+  AlertStatus,
+  AlertType,
+} from '@/types/alert';
 import { CountyFraudData, DashboardStats, TrendData } from '@/types/common';
 
 // ── Backend response shapes (snake_case) ──────────────────────────────────────
-// These match the FastAPI Pydantic schemas exactly.
-// They are mapped to the existing frontend types below.
 
 interface BackendDashboardStats {
-  totalClaimsProcessed: number; // camelCase preserved in backend schema
+  totalClaimsProcessed: number;
   flaggedClaims: number;
   criticalAlerts: number;
   estimatedFraudPrevented: number;
@@ -35,15 +33,15 @@ interface BackendDashboardStats {
 }
 
 interface BackendTrendData {
-  date: string; // "2026-02-04"
-  totalClaims: number; // camelCase preserved
+  date: string;
+  totalClaims: number;
   flaggedClaims: number;
-  fraudRate: number; // 0.0 – 1.0
+  fraudRate: number;
 }
 
 interface BackendCountyFraudData {
   county: string;
-  totalClaims: number; // camelCase preserved
+  totalClaims: number;
   flaggedClaims: number;
   fraudRate: number;
   estimatedAmount: number;
@@ -51,13 +49,13 @@ interface BackendCountyFraudData {
 
 interface BackendAlertListItem {
   id: string;
-  alert_number: string; // "ALERT-00120"
-  type_display: string; // "High Risk Claim"
-  alert_type: string; // "HIGH_RISK_CLAIM"
+  alert_number: string;
+  type_display: string;
+  alert_type: string;
   provider_name: string | null;
   provider_id: string | null;
-  status: string; // "OPEN" | "ASSIGNED" | "INVESTIGATING" | ...
-  severity: string; // "CRITICAL" | "HIGH" | "WARNING" | "INFO"
+  status: string;
+  severity: string;
   fraud_amount: number | null;
   created_at: string;
   claim_id: string | null;
@@ -65,11 +63,11 @@ interface BackendAlertListItem {
 }
 
 interface BackendRiskDistributionItem {
-  label: string; // "Critical" | "High" | "Medium" | "Low"
-  risk_level: string; // "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  label: string;
+  risk_level: string;
   count: number;
-  percentage: number; // e.g. 2.8
-  colour: string; // "purple" | "red" | "orange" | "green"
+  percentage: number;
+  colour: string;
 }
 
 interface BackendRiskDistribution {
@@ -87,69 +85,43 @@ interface BackendPaginatedAlerts {
 
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
-/**
- * Map backend alert_type enum → frontend Alert.type values.
- * Backend: HIGH_RISK_CLAIM, PHANTOM_PATIENT, UPCODING, DUPLICATE_CLAIM, etc.
- * Frontend Alert type: "high_risk_claim" | "phantom_patient" | ...
- */
-function mapAlertType(backendType: string): Alert['type'] {
-  return backendType.toLowerCase() as Alert['type'];
-}
-
-/**
- * Map backend severity enum → frontend Alert.severity values.
- * Backend: CRITICAL | HIGH | WARNING | INFO
- * Frontend: "critical" | "high" | "medium" | "low"
- */
-function mapSeverity(backendSeverity: string): Alert['severity'] {
-  const map: Record<string, Alert['severity']> = {
-    CRITICAL: 'critical',
-    HIGH: 'high',
-    WARNING: 'medium',
-    INFO: 'low',
+function mapSeverity(backendSeverity: string): AlertSeverity {
+  const map: Record<string, AlertSeverity> = {
+    CRITICAL: 'CRITICAL',
+    HIGH: 'HIGH',
+    WARNING: 'WARNING',
+    INFO: 'INFO',
   };
-  return map[backendSeverity] ?? 'low';
+  return map[backendSeverity] ?? 'INFO';
 }
 
-/**
- * Map backend status enum → frontend Alert.status values.
- * Backend: OPEN | ASSIGNED | INVESTIGATING | ESCALATED | RESOLVED | EXPIRED
- * Frontend: "open" | "assigned" | "investigating" | "resolved"
- */
-function mapStatus(backendStatus: string): Alert['status'] {
-  const map: Record<string, Alert['status']> = {
-    OPEN: 'open',
-    ASSIGNED: 'assigned',
-    INVESTIGATING: 'investigating',
-    ESCALATED: 'investigating',
-    RESOLVED: 'resolved',
-    EXPIRED: 'resolved',
+function mapStatus(backendStatus: string): AlertStatus {
+  const map: Record<string, AlertStatus> = {
+    OPEN: 'OPEN',
+    ASSIGNED: 'OPEN', // no ASSIGNED in frontend type — fallback to OPEN
+    ACKNOWLEDGED: 'ACKNOWLEDGED',
+    INVESTIGATING: 'INVESTIGATING',
+    ESCALATED: 'ESCALATED',
+    RESOLVED: 'RESOLVED',
+    EXPIRED: 'EXPIRED',
   };
-  return map[backendStatus] ?? 'open';
+  return map[backendStatus] ?? 'OPEN';
 }
 
-/**
- * Transform a BackendAlertListItem into the frontend Alert shape.
- * Fields that have no backend equivalent are given safe defaults.
- */
-function mapAlert(a: BackendAlertListItem): Alert {
+function mapAlert(a: BackendAlertListItem): AlertListItem {
   return {
     id: a.id,
     alertNumber: a.alert_number,
-    claimId: a.claim_id ?? '',
-    claimNumber: a.sha_claim_id ?? '',
-    providerId: a.provider_id ?? '',
-    providerName: a.provider_name ?? '',
-    type: mapAlertType(a.alert_type),
-    severity: mapSeverity(a.severity),
+    typeDisplay: a.type_display,
+    alertType: a.alert_type as AlertType,
+    providerName: a.provider_name,
+    providerId: a.provider_id,
     status: mapStatus(a.status),
-    title: a.type_display,
-    description: a.type_display,
-    riskScore: 0, // not included in list view; fetch detail for this
-    estimatedFraudAmount: a.fraud_amount ?? 0,
-    assignedToName: undefined, // not returned in list endpoint
-    createdAt: new Date(a.created_at),
-    updatedAt: new Date(a.created_at),
+    severity: mapSeverity(a.severity),
+    fraudAmount: a.fraud_amount,
+    createdAt: a.created_at,
+    claimId: a.claim_id,
+    shaClaimId: a.sha_claim_id,
   };
 }
 
@@ -160,21 +132,16 @@ export const dashboardService = {
    * Four stat cards — Total Claims Processed, Flagged Claims,
    * Critical Alerts, Estimated Fraud Prevented.
    *
-   * Backend:  GET /api/v1/dashboard/stats
-   * Response: BackendDashboardStats (camelCase matches TS interface directly)
+   * Backend: GET /api/v1/dashboard/stats
    */
   getStats: async (): Promise<DashboardStats> => {
     try {
       const data = await api.get<BackendDashboardStats>('/dashboard/stats');
-      // Backend field names already match DashboardStats exactly.
-      // We pick only what the interface requires and drop the extra
-      // change fields (pass them through if your DashboardStats type grows).
       return {
         totalClaimsProcessed: data.totalClaimsProcessed,
         flaggedClaims: data.flaggedClaims,
         criticalAlerts: data.criticalAlerts,
         estimatedFraudPrevented: data.estimatedFraudPrevented,
-        // Change % fields — used by stat card arrows
         totalClaimsChange: data.totalClaimsChange,
         flaggedClaimsChange: data.flaggedClaimsChange,
         criticalAlertsChange: data.criticalAlertsChange,
@@ -188,15 +155,13 @@ export const dashboardService = {
   /**
    * Daily trend data for the 30-day chart.
    *
-   * Backend:  GET /api/v1/dashboard/trend?days=N
-   * Response: BackendTrendData[] (camelCase matches TrendData interface directly)
+   * Backend: GET /api/v1/dashboard/trend?days=N
    */
   getTrendData: async (days: number = 30): Promise<TrendData[]> => {
     try {
       const data = await api.get<BackendTrendData[]>('/dashboard/trend', {
         params: { days },
       });
-      // Backend field names already match TrendData — no transformation needed.
       return data.map(d => ({
         date: d.date,
         totalClaims: d.totalClaims,
@@ -211,8 +176,7 @@ export const dashboardService = {
   /**
    * Top counties by fraud rate for the county table.
    *
-   * Backend:  GET /api/v1/dashboard/counties?limit=N
-   * Response: BackendCountyFraudData[] (camelCase matches CountyFraudData directly)
+   * Backend: GET /api/v1/dashboard/counties?limit=N
    */
   getCountyFraudData: async (
     limit: number = 10,
@@ -220,11 +184,8 @@ export const dashboardService = {
     try {
       const data = await api.get<BackendCountyFraudData[]>(
         '/dashboard/counties',
-        {
-          params: { limit },
-        },
+        { params: { limit } },
       );
-      // Backend field names already match CountyFraudData — no transformation needed.
       return data.map(d => ({
         county: d.county,
         totalClaims: d.totalClaims,
@@ -240,13 +201,9 @@ export const dashboardService = {
   /**
    * Recent CRITICAL alerts for the bottom dashboard table.
    *
-   * Backend:  GET /api/v1/dashboard/critical-alerts?limit=N
-   * Response: PaginatedResponse<AlertListItem>
-   *
-   * The backend AlertListItem uses snake_case; mapAlert() converts
-   * each item to the frontend Alert shape.
+   * Backend: GET /api/v1/dashboard/critical-alerts?limit=N
    */
-  getCriticalAlerts: async (limit: number = 10): Promise<Alert[]> => {
+  getCriticalAlerts: async (limit: number = 10): Promise<AlertListItem[]> => {
     try {
       const data = await api.get<BackendPaginatedAlerts>(
         '/dashboard/critical-alerts',
@@ -261,7 +218,7 @@ export const dashboardService = {
   /**
    * Risk distribution panel — Critical / High / Medium / Low counts + percentages.
    *
-   * Backend:  GET /api/v1/dashboard/risk-distribution
+   * Backend: GET /api/v1/dashboard/risk-distribution
    */
   getRiskDistribution: async () => {
     try {
@@ -269,7 +226,7 @@ export const dashboardService = {
         '/dashboard/risk-distribution',
       );
       return {
-        items: data.items, // label, risk_level, count, percentage, colour
+        items: data.items,
         totalClaims: data.total_claims,
       };
     } catch (err) {
@@ -278,13 +235,9 @@ export const dashboardService = {
   },
 
   /**
-   * Full dashboard in one call — use this on page load to avoid
-   * 4 separate waterfall requests.
+   * Full dashboard in one call — avoids 4 separate waterfall requests.
    *
-   * Backend:  GET /api/v1/dashboard?trend_days=N
-   *
-   * Returns all four widgets at once; the caller can destructure
-   * what it needs.
+   * Backend: GET /api/v1/dashboard?trend_days=N
    */
   getDashboard: async (trendDays: number = 30) => {
     try {
@@ -300,6 +253,10 @@ export const dashboardService = {
           flaggedClaims: data.stats.flaggedClaims,
           criticalAlerts: data.stats.criticalAlerts,
           estimatedFraudPrevented: data.stats.estimatedFraudPrevented,
+          totalClaimsChange: data.stats.totalClaimsChange,
+          flaggedClaimsChange: data.stats.flaggedClaimsChange,
+          criticalAlertsChange: data.stats.criticalAlertsChange,
+          fraudPreventedChange: data.stats.fraudPreventedChange,
         } as DashboardStats,
         trend: data.trend.map(d => ({
           date: d.date,

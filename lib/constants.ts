@@ -152,5 +152,3 @@ export const REFRESH_INTERVALS = {
   CLAIMS: 30000, // 30 seconds
   ALERTS: 15000, // 15 seconds
 };
-
-export const MOCK_API_ENABLED = process.env.NEXT_PUBLIC_MOCK_API === 'true';
