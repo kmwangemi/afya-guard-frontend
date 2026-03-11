@@ -61,3 +61,25 @@ export interface LogFilterParams {
   fromDate?: string; // ISO datetime
   toDate?: string;
 }
+
+export interface ApiLogEntry {
+  id: string;
+  user_id: string | null;
+  user_full_name: string | null;
+  user_email: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  audit_log_metadata: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  performed_at: string;
+}
+
+export interface ApiPaginated {
+  items: ApiLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}

@@ -20,15 +20,6 @@ apiClient.interceptors.request.use(config => {
 });
 
 // ── Silent token refresh on 401 ───────────────────────────────────────────────
-// Flow:
-//   1. Request fails with 401
-//   2. Try to get a new access_token using the stored refresh_token
-//   3. On success → save new token + retry the original request transparently
-//   4. On failure (refresh_token revoked/expired) → logout + redirect /login
-//
-// The isRefreshing flag + failedQueue ensure that if multiple requests fail
-// simultaneously, only ONE refresh call is made and all others wait for it.
-
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -46,17 +37,33 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as typeof error.config & {
       _retry?: boolean;
     };
-    if (error.response?.status !== 401 || originalRequest._retry) {
+
+    const status = error.response?.status;
+
+    // ✅ Pass through ALL non-401 errors immediately — 409, 422, 400, 500 etc.
+    // These are real business errors that callers must handle themselves.
+    if (status !== 401) {
       return Promise.reject(error);
     }
+
+    // ✅ Pass through 401s from auth endpoints — wrong credentials,
+    // expired refresh token etc. are not session errors.
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/refresh');
+
+    if (isAuthEndpoint || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // ── Everything below only runs for 401s on protected endpoints ──────────
+
     const { refreshToken, setToken, logout } = useAuthStore.getState();
-    // No refresh token — log out immediately
     if (!refreshToken) {
       logout();
       if (typeof window !== 'undefined') window.location.href = '/login';
       return Promise.reject(error);
     }
-    // Another refresh is already running — queue this request
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -65,10 +72,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest!);
       });
     }
-
     originalRequest._retry = true;
     isRefreshing = true;
-
     try {
       const { data } = await axios.post<{
         access_token: string;
@@ -111,6 +116,7 @@ export const handleApiError = (error: unknown): string => {
 };
 
 // ── Type-safe API helpers ─────────────────────────────────────────────────────
+
 export const api = {
   get: <T>(url: string, config = {}) =>
     apiClient.get<T>(url, config).then(res => res.data),
@@ -123,5 +129,3 @@ export const api = {
   delete: <T>(url: string, config = {}) =>
     apiClient.delete<T>(url, config).then(res => res.data),
 };
-
-export default apiClient;

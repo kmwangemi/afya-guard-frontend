@@ -168,3 +168,103 @@ export interface UploadEvidencePayload {
   fileType: string;
   fileUrl: string;
 }
+
+// ─── Backend response shapes ──────────────────────────────────────────────────
+
+export interface ApiListItem {
+  id: string;
+  inv_number: string;
+  investigator_name: string | null;
+  investigator_id: string | null;
+  provider_name: string | null;
+  provider_id: string | null;
+  claim_id: string;
+  sha_claim_id: string | null;
+  status: string;
+  priority: string;
+  progress: number;
+  opened_at: string;
+  closed_at: string | null;
+  risk_level: string | null;
+  final_score: number | null;
+  note_count: number;
+}
+
+export interface ApiDetail {
+  id: string;
+  inv_number: string;
+  subtitle: string;
+  stat_cards: {
+    status: string;
+    priority: string;
+    days_open: number;
+    progress: number;
+  };
+  investigation_details: {
+    investigator_name: string | null;
+    investigator_id: string | null;
+    related_claim: string | null;
+    claim_id: string | null;
+    created_at: string;
+    target_date: string | null;
+    closed_at: string | null;
+  };
+  findings: string | null;
+  timeline: {
+    event: string;
+    actor: string | null;
+    note: string | null;
+    timestamp: string;
+  }[];
+  evidence: {
+    id: string;
+    file_name: string;
+    file_type: string;
+    file_url: string | null;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+  }[];
+  summary: {
+    alert_number: string | null;
+    alert_id: string | null;
+    claim_number: string | null;
+    claim_id: string | null;
+    provider_name: string | null;
+    provider_id: string | null;
+    investigator_name: string | null;
+    investigator_id: string | null;
+  };
+  quick_actions: {
+    available_status_transitions: string[];
+    can_close: boolean;
+    can_update_progress: boolean;
+    can_assign: boolean;
+    can_upload_evidence: boolean;
+  };
+  notes: {
+    id: string;
+    case_id: string;
+    note: string;
+    created_at: string;
+    author_name: string | null;
+    author_id: string | null;
+  }[];
+  status: string;
+  priority: string;
+  progress: number;
+  opened_at: string;
+  closed_at: string | null;
+  claim_id: string;
+  fraud_score_id: string;
+  assigned_analyst_id: string | null;
+  resolution_summary: string | null;
+  estimated_loss: number | null;
+}
+
+export interface ApiPaginated {
+  items: ApiListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
