@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ALERT_TYPE_LABELS } from '@/lib/constants';
 import { formatCurrency, formatDateTime } from '@/lib/helpers';
-import { Alert } from '@/types/alert';
+import { AlertListItem } from '@/types/alert';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface RecentAlertsProps {
-  alerts: Alert[];
+  alerts: AlertListItem[];
   isLoading?: boolean;
 }
 
@@ -77,7 +77,7 @@ export function RecentAlerts({ alerts, isLoading }: RecentAlertsProps) {
                     {alert.claimNumber}
                   </span>
                   <span className='text-xs text-gray-500'>
-                    {ALERT_TYPE_LABELS[alert.type] ?? alert.type}
+                    {ALERT_TYPE_LABELS[alert.alertType] ?? alert.alertType}
                   </span>
                 </div>
                 <p className='text-sm text-gray-600 mb-2'>
@@ -100,9 +100,9 @@ export function RecentAlerts({ alerts, isLoading }: RecentAlertsProps) {
                 >
                   {alert.severity}
                 </Badge>
-                {alert.estimatedFraudAmount > 0 && (
+                {alert.fraudAmount && alert.fraudAmount > 0 && (
                   <p className='text-sm font-medium text-gray-900'>
-                    {formatCurrency(alert.estimatedFraudAmount)}
+                    {formatCurrency(alert.fraudAmount)}
                   </p>
                 )}
               </div>

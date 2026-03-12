@@ -34,6 +34,7 @@ export interface AlertListItem {
   alertNumber: string;
   typeDisplay: string;
   alertType: AlertType;
+  claimNumber: string;
   providerName: string | null;
   providerId: string | null;
   status: AlertStatus;
