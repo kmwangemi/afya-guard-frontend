@@ -11,12 +11,12 @@ import {
   useMyProfile,
   useUpdateProfile,
 } from '@/hooks/queries/useUser';
-import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Eye, Lock, Settings, UserPlus, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,7 +79,6 @@ function useRegisterUser() {
 // ── Profile Section ───────────────────────────────────────────────────────────
 
 function ProfileSection() {
-  const { toast } = useToast();
   const { data: profile, isLoading } = useMyProfile();
   const updateProfile = useUpdateProfile();
   const {
@@ -110,13 +109,9 @@ function ProfileSection() {
         phone: values.phone.trim() || undefined,
         department: values.department.trim() || undefined,
       });
-      toast({ title: 'Success', description: 'Profile updated successfully.' });
+      toast.success('Profile updated successfully.');
     } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update profile.');
     }
   };
   return (
@@ -232,7 +227,6 @@ interface RegisterFormValues {
 }
 
 function RegisterUserSection() {
-  const { toast } = useToast();
   const { data: roles = [], isLoading: rolesLoading } = useRoles();
   const registerUser = useRegisterUser();
   const {
@@ -268,13 +262,10 @@ function RegisterUserSection() {
     try {
       await registerUser.mutateAsync(rest);
       reset();
-      toast({
-        title: 'User registered',
-        description: `${values.full_name} has been added successfully.`,
-      });
+      toast.success('User registered successfully.');
     } catch (err: any) {
       const detail = err?.response?.data?.detail ?? 'Failed to register user.';
-      toast({ title: 'Error', description: detail, variant: 'destructive' });
+      toast.error(detail);
     }
   };
   return (
@@ -487,7 +478,6 @@ function RegisterUserSection() {
 // ── Password Section ──────────────────────────────────────────────────────────
 
 function SecuritySection() {
-  const { toast } = useToast();
   const changePassword = useChangePassword();
   const {
     register,
@@ -511,16 +501,9 @@ function SecuritySection() {
         confirmPassword: values.confirmPassword,
       });
       reset();
-      toast({
-        title: 'Success',
-        description: 'Password changed successfully.',
-      });
+      toast.success('Password changed successfully.');
     } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to change password. Check your current password.',
-        variant: 'destructive',
-      });
+      toast.success('Failed to change password. Check your current password.');
     }
   };
   return (
@@ -604,7 +587,6 @@ function SecuritySection() {
 // ── Privacy Section (local-only) ──────────────────────────────────────────────
 
 function PrivacySection() {
-  const { toast } = useToast();
   const { register, handleSubmit } = useForm({
     defaultValues: { showEmail: true, showPhone: false },
   });
@@ -616,10 +598,7 @@ function PrivacySection() {
       </h2>
       <form
         onSubmit={handleSubmit(() =>
-          toast({
-            title: 'Privacy settings saved',
-            description: 'Your privacy settings have been saved locally.',
-          }),
+          toast.success('Privacy settings saved successfully.'),
         )}
         className='space-y-4'
       >
@@ -663,7 +642,6 @@ function PrivacySection() {
 // ── Theme Section (local-only) ────────────────────────────────────────────────
 
 function ThemeSection() {
-  const { toast } = useToast();
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: { theme: 'light' as 'light' | 'dark' | 'auto' },
   });
@@ -676,10 +654,7 @@ function ThemeSection() {
       </h2>
       <form
         onSubmit={handleSubmit(values =>
-          toast({
-            title: 'Theme saved',
-            description: `Theme set to ${values.theme}.`,
-          }),
+          toast.success('Theme saved successfully.'),
         )}
         className='space-y-4'
       >

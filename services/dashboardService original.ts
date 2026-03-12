@@ -1,27 +1,25 @@
 /**
  * SHA Fraud Detection — Dashboard Service
  *
- * Endpoints:
- *   GET /api/v1/dashboard/stats
- *   GET /api/v1/dashboard/trend?days=N
- *   GET /api/v1/dashboard/risk-distribution
- *   GET /api/v1/dashboard/counties?limit=N
- *   GET /api/v1/dashboard/critical-alerts?limit=N
- *   GET /api/v1/dashboard/top-providers?limit=N&days=N  ← NEW
- *   GET /api/v1/dashboard/provider-trend/:id?days=N     ← NEW
- *   GET /api/v1/dashboard?trend_days=N
+ * Endpoints used:
+ *   GET /api/v1/dashboard/stats              → getStats()
+ *   GET /api/v1/dashboard/trend?days=N       → getTrendData()
+ *   GET /api/v1/dashboard/counties?limit=N   → getCountyFraudData()
+ *   GET /api/v1/dashboard/critical-alerts?limit=N → getCriticalAlerts()
+ *   GET /api/v1/dashboard/risk-distribution  → getRiskDistribution()
+ *   GET /api/v1/dashboard?trend_days=N       → getDashboard()
  */
 
 import { api, handleApiError } from '@/lib/api';
-import { DashboardStats, TrendData, CountyFraudData } from '@/types/common';
 import {
-  AlertType,
   AlertListItem,
   AlertSeverity,
   AlertStatus,
+  AlertType,
 } from '@/types/alert';
+import { CountyFraudData, DashboardStats, TrendData } from '@/types/common';
 
-// ── Backend response shapes ───────────────────────────────────────────────────
+// ── Backend response shapes (snake_case) ──────────────────────────────────────
 
 interface BackendDashboardStats {
   totalClaimsProcessed: number;
@@ -85,31 +83,6 @@ interface BackendPaginatedAlerts {
   pages: number;
 }
 
-// ── NEW: Top flagged providers ────────────────────────────────────────────────
-
-export interface TopFlaggedProvider {
-  provider_id: string;
-  name: string;
-  county: string | null;
-  total_claims: number;
-  flagged_claims: number;
-  fraud_rate: number; // 0.0 – 1.0
-  avg_risk_score: number; // 0 – 100
-  estimated_loss: number; // raw KES
-}
-
-export interface ProviderSubmissionPoint {
-  date: string; // "2026-02-04"
-  total_claims: number;
-  flagged_claims: number;
-}
-
-export interface ProviderSubmissionTrend {
-  provider_id: string;
-  provider_name: string;
-  trend: ProviderSubmissionPoint[];
-}
-
 // ── Field mappers ─────────────────────────────────────────────────────────────
 
 function mapSeverity(backendSeverity: string): AlertSeverity {
@@ -139,26 +112,28 @@ function mapAlert(a: BackendAlertListItem): AlertListItem {
   return {
     id: a.id,
     alertNumber: a.alert_number,
-    claimId: a.claim_id ?? '',
-    claimNumber: a.sha_claim_id ?? '',
-    providerId: a.provider_id ?? '',
-    providerName: a.provider_name ?? '',
+    typeDisplay: a.type_display,
     alertType: a.alert_type as AlertType,
-    severity: mapSeverity(a.severity),
+    providerName: a.provider_name,
+    providerId: a.provider_id,
     status: mapStatus(a.status),
-    title: a.type_display,
-    description: a.type_display,
-    riskScore: 0,
-    estimatedFraudAmount: a.fraud_amount ?? 0,
-    assignedToName: undefined,
+    severity: mapSeverity(a.severity),
+    fraudAmount: a.fraud_amount,
     createdAt: a.created_at,
-    updatedAt: new Date(a.created_at),
+    claimId: a.claim_id,
+    shaClaimId: a.sha_claim_id,
   };
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const dashboardService = {
+  /**
+   * Four stat cards — Total Claims Processed, Flagged Claims,
+   * Critical Alerts, Estimated Fraud Prevented.
+   *
+   * Backend: GET /api/v1/dashboard/stats
+   */
   getStats: async (): Promise<DashboardStats> => {
     try {
       const data = await api.get<BackendDashboardStats>('/dashboard/stats');
@@ -177,6 +152,11 @@ export const dashboardService = {
     }
   },
 
+  /**
+   * Daily trend data for the 30-day chart.
+   *
+   * Backend: GET /api/v1/dashboard/trend?days=N
+   */
   getTrendData: async (days: number = 30): Promise<TrendData[]> => {
     try {
       const data = await api.get<BackendTrendData[]>('/dashboard/trend', {
@@ -193,15 +173,18 @@ export const dashboardService = {
     }
   },
 
+  /**
+   * Top counties by fraud rate for the county table.
+   *
+   * Backend: GET /api/v1/dashboard/counties?limit=N
+   */
   getCountyFraudData: async (
     limit: number = 10,
   ): Promise<CountyFraudData[]> => {
     try {
       const data = await api.get<BackendCountyFraudData[]>(
         '/dashboard/counties',
-        {
-          params: { limit },
-        },
+        { params: { limit } },
       );
       return data.map(d => ({
         county: d.county,
@@ -215,6 +198,11 @@ export const dashboardService = {
     }
   },
 
+  /**
+   * Recent CRITICAL alerts for the bottom dashboard table.
+   *
+   * Backend: GET /api/v1/dashboard/critical-alerts?limit=N
+   */
   getCriticalAlerts: async (limit: number = 10): Promise<AlertListItem[]> => {
     try {
       const data = await api.get<BackendPaginatedAlerts>(
@@ -227,6 +215,11 @@ export const dashboardService = {
     }
   },
 
+  /**
+   * Risk distribution panel — Critical / High / Medium / Low counts + percentages.
+   *
+   * Backend: GET /api/v1/dashboard/risk-distribution
+   */
   getRiskDistribution: async () => {
     try {
       const data = await api.get<BackendRiskDistribution>(
@@ -241,35 +234,11 @@ export const dashboardService = {
     }
   },
 
-  /** Top N providers by flagged claims over the last `days` days. */
-  getTopFlaggedProviders: async (
-    limit: number = 10,
-    days: number = 30,
-  ): Promise<TopFlaggedProvider[]> => {
-    try {
-      return await api.get<TopFlaggedProvider[]>('/dashboard/top-providers', {
-        params: { limit, days },
-      });
-    } catch (err) {
-      throw new Error(handleApiError(err));
-    }
-  },
-
-  /** 30-day daily submission trend for a single provider. */
-  getProviderSubmissionTrend: async (
-    providerId: string,
-    days: number = 30,
-  ): Promise<ProviderSubmissionTrend> => {
-    try {
-      return await api.get<ProviderSubmissionTrend>(
-        `/dashboard/provider-trend/${providerId}`,
-        { params: { days } },
-      );
-    } catch (err) {
-      throw new Error(handleApiError(err));
-    }
-  },
-
+  /**
+   * Full dashboard in one call — avoids 4 separate waterfall requests.
+   *
+   * Backend: GET /api/v1/dashboard?trend_days=N
+   */
   getDashboard: async (trendDays: number = 30) => {
     try {
       const data = await api.get<{
@@ -278,7 +247,6 @@ export const dashboardService = {
         top_counties: BackendCountyFraudData[];
         risk_distribution: BackendRiskDistribution;
       }>('/dashboard', { params: { trend_days: trendDays } });
-
       return {
         stats: {
           totalClaimsProcessed: data.stats.totalClaimsProcessed,
@@ -290,14 +258,12 @@ export const dashboardService = {
           criticalAlertsChange: data.stats.criticalAlertsChange,
           fraudPreventedChange: data.stats.fraudPreventedChange,
         } as DashboardStats,
-
         trend: data.trend.map(d => ({
           date: d.date,
           totalClaims: d.totalClaims,
           flaggedClaims: d.flaggedClaims,
           fraudRate: d.fraudRate,
         })) as TrendData[],
-
         counties: data.top_counties.map(d => ({
           county: d.county,
           totalClaims: d.totalClaims,
@@ -305,7 +271,6 @@ export const dashboardService = {
           fraudRate: d.fraudRate,
           estimatedAmount: d.estimatedAmount,
         })) as CountyFraudData[],
-
         riskDistribution: {
           items: data.risk_distribution.items,
           totalClaims: data.risk_distribution.total_claims,

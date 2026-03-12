@@ -1,8 +1,11 @@
 'use client';
 
 import { CountyHeatmap } from '@/components/dashboard/CountyHeatmap';
+import { FraudRateChart } from '@/components/dashboard/FraudRateChart';
+// import { ProviderSubmissionChart } from '@/components/dashboard/ProviderSubmissionChart';
 import { RecentAlerts } from '@/components/dashboard/RecentAlerts';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { TopFlaggedProviders } from '@/components/dashboard/TopFlaggedProviders';
 import { TrendChart } from '@/components/dashboard/TrendChart';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -12,6 +15,7 @@ import {
   useDashboardStats,
   useRecentAlerts,
   useRiskDistribution,
+  useTopFlaggedProviders,
 } from '@/hooks/queries/useDashboard';
 import { formatCurrency } from '@/lib/helpers';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,6 +25,7 @@ import {
   RefreshCw,
   Shield,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -35,40 +40,43 @@ const COLOUR_CLASS: Record<string, string> = {
 export default function DashboardPage() {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: trendData, isLoading: trendLoading } = useClaimsTrend();
   const { data: countyData, isLoading: countyLoading } =
     useCountyFraudAnalysis();
   const { data: alerts, isLoading: alertsLoading } = useRecentAlerts(10);
   const { data: riskData, isLoading: riskLoading } = useRiskDistribution();
-
-  // ── Refresh — invalidate with the SAME keys used in the hooks ──────────────
-  // Previously these were 'trends' / 'county-analysis' / 'recent-alerts' which
-  // didn't match the actual keys ('trend' / 'counties' / 'critical-alerts').
+  const { data: providers, isLoading: providersLoading } =
+    useTopFlaggedProviders(10, 30);
+  // Invalidating the root 'dashboard' key cascades to all sub-keys
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      // Invalidating the root key cascades to all sub-keys:
-      // ['dashboard','stats'], ['dashboard','trend',30],
-      // ['dashboard','counties',10], ['dashboard','critical-alerts',10],
-      // ['dashboard','risk-distribution']
     } finally {
       setIsRefreshing(false);
     }
   };
-
-  // ── Risk distribution bars ─────────────────────────────────────────────────
-  // Bars are proportional to the highest count so they never overflow 100%.
-  // Falls back to empty list while loading.
+  // Risk distribution bars proportional to highest count
   const riskItems = riskData?.items ?? [];
   const maxCount = Math.max(...riskItems.map(i => i.count), 1);
-
+  // ── Derived quick-stats for secondary cards ───────────────────────────────
+  // Flag rate = flaggedClaims / totalClaimsProcessed (%)
+  const flagRate =
+    stats && stats.totalClaimsProcessed > 0
+      ? (stats.flaggedClaims / stats.totalClaimsProcessed) * 100
+      : null;
+  // Avg loss per flagged claim
+  const avgLossPerFlag =
+    stats && stats.flaggedClaims > 0
+      ? stats.estimatedFraudPrevented / stats.flaggedClaims
+      : null;
+  // Top provider risk score (first item from sorted list)
+  const topProviderScore = providers?.[0]?.avg_risk_score ?? null;
   return (
     <DashboardLayout>
       <div className='space-y-6'>
-        {/* Header */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className='flex items-center justify-between'>
           <div>
             <h1 className='text-3xl font-bold text-gray-900'>Dashboard</h1>
@@ -87,7 +95,7 @@ export default function DashboardPage() {
             Refresh
           </Button>
         </div>
-        {/* Stat Cards — change values now come from the backend */}
+        {/* ── Primary stat cards ─────────────────────────────────────────── */}
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
           <StatCard
             title='Total Claims Processed'
@@ -134,19 +142,109 @@ export default function DashboardPage() {
             isLoading={statsLoading}
           />
         </div>
-        {/* Charts row */}
+        {/* ── Secondary insight cards ────────────────────────────────────── */}
+        {/* These are derived from existing data — zero extra API calls.      */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+          {/* Overall flag rate */}
+          <div className='bg-white border border-gray-200 rounded-lg p-5'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-xs font-medium text-gray-500 uppercase tracking-wide mb-1'>
+                  Overall Flag Rate
+                </p>
+                {statsLoading ? (
+                  <div className='h-8 w-20 bg-gray-200 rounded animate-pulse' />
+                ) : (
+                  <p className='text-2xl font-bold text-gray-900'>
+                    {flagRate !== null ? `${flagRate.toFixed(2)}%` : '—'}
+                  </p>
+                )}
+                <p className='text-xs text-gray-400 mt-1'>
+                  Flagged ÷ total processed
+                </p>
+              </div>
+              <div className='p-2.5 bg-red-50 rounded-lg'>
+                <AlertTriangle className='h-5 w-5 text-red-500' />
+              </div>
+            </div>
+          </div>
+          {/* Avg loss per flagged claim */}
+          <div className='bg-white border border-gray-200 rounded-lg p-5'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-xs font-medium text-gray-500 uppercase tracking-wide mb-1'>
+                  Avg Fraud per Flagged Claim
+                </p>
+                {statsLoading ? (
+                  <div className='h-8 w-28 bg-gray-200 rounded animate-pulse' />
+                ) : (
+                  <p className='text-2xl font-bold text-gray-900'>
+                    {avgLossPerFlag !== null
+                      ? formatCurrency(avgLossPerFlag)
+                      : '—'}
+                  </p>
+                )}
+                <p className='text-xs text-gray-400 mt-1'>
+                  Fraud prevented ÷ flagged claims
+                </p>
+              </div>
+              <div className='p-2.5 bg-green-50 rounded-lg'>
+                <Shield className='h-5 w-5 text-green-500' />
+              </div>
+            </div>
+          </div>
+          {/* Highest-risk provider avg score */}
+          <div className='bg-white border border-gray-200 rounded-lg p-5'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-xs font-medium text-gray-500 uppercase tracking-wide mb-1'>
+                  Top Provider Risk Score
+                </p>
+                {providersLoading ? (
+                  <div className='h-8 w-16 bg-gray-200 rounded animate-pulse' />
+                ) : (
+                  <p
+                    className='text-2xl font-bold'
+                    style={{
+                      color:
+                        topProviderScore !== null && topProviderScore >= 80
+                          ? '#dc2626'
+                          : topProviderScore !== null && topProviderScore >= 60
+                            ? '#ea580c'
+                            : '#374151',
+                    }}
+                  >
+                    {topProviderScore !== null
+                      ? `${topProviderScore.toFixed(1)} / 100`
+                      : '—'}
+                  </p>
+                )}
+                <p className='text-xs text-gray-400 mt-1'>
+                  {providers?.[0]?.name
+                    ? providers[0].name.length > 22
+                      ? providers[0].name.slice(0, 22) + '…'
+                      : providers[0].name
+                    : 'Highest flagged provider'}
+                </p>
+              </div>
+              <div className='p-2.5 bg-orange-50 rounded-lg'>
+                <Users className='h-5 w-5 text-orange-500' />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* ── Charts row — trend + risk distribution ─────────────────────── */}
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           <div className='lg:col-span-2'>
             <TrendChart data={trendData ?? []} isLoading={trendLoading} />
           </div>
-          {/* Risk Distribution — live data from backend */}
+          {/* Risk Distribution */}
           <div className='lg:col-span-1'>
             <div className='bg-white rounded-lg p-6 border border-gray-200 h-full'>
               <h3 className='font-semibold text-gray-900 mb-4'>
                 Risk Distribution
               </h3>
               {riskLoading ? (
-                // Skeleton while loading
                 <div className='space-y-4'>
                   {[1, 2, 3, 4].map(n => (
                     <div key={n} className='animate-pulse'>
@@ -180,7 +278,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
-              {/* Total */}
               <div className='mt-5 pt-4 border-t border-gray-100 flex justify-between text-sm'>
                 <span className='text-gray-500'>Total claims</span>
                 <span className='font-semibold text-gray-900'>
@@ -192,9 +289,23 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        {/* County Heatmap */}
+        {/* ── Daily Fraud Rate ──────────────────────────────────────────── */}
+        {/* Derived from the same trendData — no extra API call needed.      */}
+        <FraudRateChart data={trendData ?? []} isLoading={trendLoading} />
+        {/* ── Top Flagged Providers + Provider Submission Trend ─────────── */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+          <TopFlaggedProviders
+            data={providers ?? []}
+            isLoading={providersLoading}
+          />
+          {/* <ProviderSubmissionChart
+            providers={providers ?? []}
+            isLoading={providersLoading}
+          /> */}
+        </div>
+        {/* ── County Heatmap ─────────────────────────────────────────────── */}
         <CountyHeatmap data={countyData ?? []} isLoading={countyLoading} />
-        {/* Recent Alerts */}
+        {/* ── Recent Alerts ──────────────────────────────────────────────── */}
         <RecentAlerts alerts={alerts ?? []} isLoading={alertsLoading} />
       </div>
     </DashboardLayout>
