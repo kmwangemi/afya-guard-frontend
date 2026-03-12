@@ -74,13 +74,6 @@ export interface UserProfile {
   updatedAt: string;
 }
 
-// PATCH /users/profile — only full_name, phone, department are editable
-export interface UpdateProfilePayload {
-  fullName?: string;
-  phone?: string;
-  department?: string;
-}
-
 // GET /users/profile/stats — Fix 1: replaces hardcoded stat values
 export interface UserPerformanceStats {
   casesInvestigated: number;
@@ -95,4 +88,60 @@ export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+// ─── Slim list item (GET /users paginated) ────────────────────────────────────
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  fullName: string;
+  isActive: boolean;
+  isSuperuser: boolean;
+  department: string | null;
+  lastLoginAt: string | null;
+  roles: string[]; // role names only
+}
+
+// ─── Payloads ─────────────────────────────────────────────────────────────────
+
+/** PATCH /users/me — own profile only */
+export interface UpdateProfilePayload {
+  fullName?: string;
+  phone?: string;
+  department?: string;
+}
+
+/** POST /users — admin creates user */
+export interface CreateUserPayload {
+  email: string;
+  fullName: string;
+  phone?: string;
+  password: string;
+  roleIds: string[];
+  isSuperuser?: boolean;
+  department?: string;
+}
+
+/** PATCH /users/:id — admin updates any field */
+export interface UpdateUserPayload {
+  fullName?: string;
+  phone?: string;
+  isActive?: boolean;
+  department?: string;
+}
+
+/** PATCH /users/:id/roles — replace role set */
+export interface AssignRolesPayload {
+  roleIds: string[];
+}
+
+// ─── Paginated list response ──────────────────────────────────────────────────
+
+export interface PaginatedUsers {
+  items: UserListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
 }

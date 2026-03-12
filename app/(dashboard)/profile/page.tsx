@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useLogout } from '@/hooks/queries/useAuth';
-import { useMyProfile, useMyStats } from '@/hooks/queries/useUser';
+import { useMyProfile, useMyStats } from '@/hooks/queries/useUsers';
 import { capitalizeFirstLetter, formatToNewDate } from '@/lib/utils';
 import {
   Briefcase,

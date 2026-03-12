@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Settings,
   User,
+  Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -63,6 +64,12 @@ const navItems = [
     href: '/profile',
     icon: User,
     roles: ['admin', 'analyst', 'investigator'] as Role[],
+  },
+  {
+    title: 'Users',
+    href: '/users',
+    icon: Users,
+    roles: ['admin'] as Role[],
   },
   {
     title: 'Settings',
