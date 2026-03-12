@@ -2,7 +2,7 @@
 
 import { CountyHeatmap } from '@/components/dashboard/CountyHeatmap';
 import { FraudRateChart } from '@/components/dashboard/FraudRateChart';
-// import { ProviderSubmissionChart } from '@/components/dashboard/ProviderSubmissionChart';
+import { ProviderSubmissionChart } from '@/components/dashboard/ProviderSubmissionChart';
 import { RecentAlerts } from '@/components/dashboard/RecentAlerts';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TopFlaggedProviders } from '@/components/dashboard/TopFlaggedProviders';
@@ -298,10 +298,10 @@ export default function DashboardPage() {
             data={providers ?? []}
             isLoading={providersLoading}
           />
-          {/* <ProviderSubmissionChart
+          <ProviderSubmissionChart
             providers={providers ?? []}
             isLoading={providersLoading}
-          /> */}
+          />
         </div>
         {/* ── County Heatmap ─────────────────────────────────────────────── */}
         <CountyHeatmap data={countyData ?? []} isLoading={countyLoading} />

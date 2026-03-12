@@ -1,7 +1,6 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,12 +9,12 @@ import {
   useChangePassword,
   useMyProfile,
   useUpdateProfile,
-} from '@/hooks/queries/useUser';
+} from '@/hooks/queries/useUsers';
 import { apiClient } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Eye, Lock, Settings, UserPlus, X } from 'lucide-react';
+import { Bell, Eye, Lock, Settings } from 'lucide-react';
 import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -207,267 +206,6 @@ function ProfileSection() {
             }}
           >
             Cancel
-          </Button>
-        </div>
-      </form>
-    </Card>
-  );
-}
-
-// ── Register User Section ─────────────────────────────────────────────────────
-
-interface RegisterFormValues {
-  email: string;
-  full_name: string;
-  phone: string;
-  password: string;
-  confirm_password: string;
-  role_ids: string[];
-  is_superuser: boolean;
-}
-
-function RegisterUserSection() {
-  const { data: roles = [], isLoading: rolesLoading } = useRoles();
-  const registerUser = useRegisterUser();
-  const {
-    register,
-    handleSubmit,
-    watch,
-    control,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
-    defaultValues: {
-      email: '',
-      full_name: '',
-      phone: '',
-      password: '',
-      confirm_password: '',
-      role_ids: [],
-      is_superuser: false,
-    },
-  });
-  const selectedRoleIds = watch('role_ids');
-  const newPassword = watch('password');
-  const toggleRole = (roleId: string) => {
-    const current = selectedRoleIds ?? [];
-    const updated = current.includes(roleId)
-      ? current.filter(id => id !== roleId)
-      : [...current, roleId];
-    setValue('role_ids', updated, { shouldValidate: true });
-  };
-  const onSubmit = async (values: RegisterFormValues) => {
-    const { confirm_password, ...rest } = values;
-    try {
-      await registerUser.mutateAsync(rest);
-      reset();
-      toast.success('User registered successfully.');
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail ?? 'Failed to register user.';
-      toast.error(detail);
-    }
-  };
-  return (
-    <Card className='p-6'>
-      <h2 className='text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2'>
-        <UserPlus className='h-5 w-5' />
-        Register New User
-      </h2>
-      <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
-        {/* Full name + Email */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <div>
-            <Label className='block text-sm font-medium text-gray-700 mb-1'>
-              Full Name <span className='text-red-500'>*</span>
-            </Label>
-            <Input
-              {...register('full_name', {
-                required: 'Full name is required',
-                minLength: { value: 2, message: 'Minimum 2 characters' },
-              })}
-              placeholder='Kelvin Mwas'
-            />
-            {errors.full_name && (
-              <p className='text-xs text-red-500 mt-1'>
-                {errors.full_name.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label className='block text-sm font-medium text-gray-700 mb-1'>
-              Email Address <span className='text-red-500'>*</span>
-            </Label>
-            <Input
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: 'Enter a valid email address',
-                },
-              })}
-              type='email'
-              placeholder='user@example.com'
-            />
-            {errors.email && (
-              <p className='text-xs text-red-500 mt-1'>
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-        </div>
-        {/* Phone */}
-        <div>
-          <Label className='block text-sm font-medium text-gray-700 mb-1'>
-            Phone Number
-          </Label>
-          <Input
-            {...register('phone')}
-            type='tel'
-            placeholder='+254 712 345 678'
-          />
-        </div>
-        {/* Password */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <div>
-            <Label className='block text-sm font-medium text-gray-700 mb-1'>
-              Password <span className='text-red-500'>*</span>
-            </Label>
-            <PasswordInput
-              placeholder='••••••••'
-              {...register('password', {
-                required: 'Password is required',
-                minLength: { value: 8, message: 'Minimum 8 characters' },
-              })}
-              // disabled={isPending}
-              className='border-gray-300'
-            />
-            {errors.password && (
-              <p className='text-xs text-red-500 mt-1'>
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label className='block text-sm font-medium text-gray-700 mb-1'>
-              Confirm Password <span className='text-red-500'>*</span>
-            </Label>
-            <PasswordInput
-              placeholder='••••••••'
-              {...register('confirm_password', {
-                required: 'Please confirm the password',
-                validate: val =>
-                  val === newPassword || 'Passwords do not match',
-              })}
-              // disabled={isPending}
-              className='border-gray-300'
-            />
-            {errors.confirm_password && (
-              <p className='text-xs text-red-500 mt-1'>
-                {errors.confirm_password.message}
-              </p>
-            )}
-          </div>
-        </div>
-        {/* Roles — multi-select as toggleable badges */}
-        <div>
-          <Label className='block text-sm font-medium text-gray-700 mb-2'>
-            Roles <span className='text-red-500'>*</span>
-          </Label>
-          {rolesLoading ? (
-            <div className='flex gap-2 flex-wrap'>
-              {[1, 2, 3].map(i => (
-                <div
-                  key={i}
-                  className='h-9 w-32 bg-gray-100 rounded-full animate-pulse'
-                />
-              ))}
-            </div>
-          ) : roles.length === 0 ? (
-            <p className='text-sm text-gray-500'>
-              No roles available. Create roles first.
-            </p>
-          ) : (
-            <Controller
-              name='role_ids'
-              control={control}
-              rules={{
-                validate: v => v.length > 0 || 'Select at least one role',
-              }}
-              render={() => (
-                <div className='flex flex-wrap gap-2'>
-                  {roles.map(role => {
-                    const selected = selectedRoleIds.includes(role.id);
-                    return (
-                      <button
-                        key={role.id}
-                        type='button'
-                        onClick={() => toggleRole(role.id)}
-                        title={role.description ?? role.name}
-                        className={`
-                          inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm
-                          font-medium border transition-all duration-150 select-none
-                          ${
-                            selected
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                              : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600'
-                          }
-                        `}
-                      >
-                        {selected && <X className='h-3 w-3' />}
-                        {role.display_name ?? role.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            />
-          )}
-          {/* Selected role pills summary */}
-          {selectedRoleIds.length > 0 && (
-            <p className='text-xs text-gray-500 mt-2'>
-              {selectedRoleIds.length} role
-              {selectedRoleIds.length > 1 ? 's' : ''} selected
-            </p>
-          )}
-          {errors.role_ids && (
-            <p className='text-xs text-red-500 mt-1'>
-              {errors.role_ids.message as string}
-            </p>
-          )}
-        </div>
-        {/* Superuser toggle */}
-        <div className='flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg'>
-          <div>
-            <p className='font-medium text-gray-900'>Superuser Access</p>
-            <p className='text-sm text-gray-600'>
-              Grants unrestricted access to all system features. Use with
-              caution.
-            </p>
-          </div>
-          <Controller
-            name='is_superuser'
-            control={control}
-            render={({ field }) => (
-              <input
-                type='checkbox'
-                checked={field.value}
-                onChange={e => field.onChange(e.target.checked)}
-                className='h-5 w-5 cursor-pointer accent-amber-500'
-              />
-            )}
-          />
-        </div>
-        <div className='flex gap-2 pt-2'>
-          <Button
-            type='submit'
-            className='bg-blue-600 hover:bg-blue-700'
-            disabled={registerUser.isPending}
-          >
-            {registerUser.isPending ? 'Registering...' : 'Register User'}
-          </Button>
-          <Button type='button' variant='outline' onClick={() => reset()}>
-            Clear
           </Button>
         </div>
       </form>
@@ -704,7 +442,6 @@ export default function SettingsPage() {
           </p>
         </div>
         <ProfileSection />
-        <RegisterUserSection />
         <PrivacySection />
         <ThemeSection />
         <SecuritySection />
