@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/uiStore';
 import {
   BarChart3,
   Bell,
+  Brain,
   Building2,
   ChevronLeft,
   ClipboardList,
@@ -15,7 +16,7 @@ import {
   LayoutDashboard,
   Settings,
   User,
-  Users
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -76,6 +77,12 @@ const navItems = [
     href: '/settings',
     icon: Settings,
     roles: ['admin'] as Role[],
+  },
+  {
+    title: 'ML',
+    href: '/ml',
+    icon: Brain,
+    roles: ['admin', 'analyst'] as Role[],
   },
   {
     title: 'Logs',
