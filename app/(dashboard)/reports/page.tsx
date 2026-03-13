@@ -36,7 +36,6 @@ import {
   useReportById,
   useReports,
 } from '@/hooks/queries/useReports';
-import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatDateTime } from '@/lib/helpers';
 import {
   DateRangePreset,
@@ -48,6 +47,7 @@ import {
 } from '@/types/report';
 import { Download, Eye, FileText, Loader, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 // Fix 13+16: type labels for reportType field (was report.type)
 const TYPE_LABELS: Record<ReportType, string> = {
@@ -72,19 +72,15 @@ const STATUS_LABELS: Record<ReportStatus, string> = {
 };
 
 export default function ReportsPage() {
-  const { toast } = useToast();
-
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
   const [reportType, setReportType] = useState('');
   // Fix 18: added status filter — was missing from UI
   const [statusFilter, setStatusFilter] = useState('');
-
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-
   // Fix 19: form uses reportType (not type), dateRangePreset, customNotes
   const [generationForm, setGenerationForm] = useState<{
     name: string;
@@ -101,7 +97,6 @@ export default function ReportsPage() {
     periodEnd: '',
     customNotes: '',
   });
-
   const filters: ReportFilterParams = {};
   if (search) filters.search = search;
   if (reportType && reportType !== 'all')
@@ -115,36 +110,25 @@ export default function ReportsPage() {
     page,
     pageSize,
   );
-
   // Fix 9+10+12: full detail fetched from backend — includes key_metrics + summary_text
   const { data: reportDetail, isLoading: isLoadingDetail } = useReportById(
     viewReportId ?? '',
     viewDialogOpen && !!viewReportId,
   );
-
   // Fix 6+7: POST /reports + cache invalidation
   const generateReport = useGenerateReport();
   // Fix 22: DELETE /reports/{id}
   const deleteReport = useDeleteReport();
-
   const handleGenerateReport = async () => {
     if (!generationForm.name.trim() || !generationForm.reportType) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
+      toast.error('Please fill in all required fields.');
       return;
     }
     if (
       generationForm.dateRangePreset === 'custom' &&
       (!generationForm.periodStart || !generationForm.periodEnd)
     ) {
-      toast({
-        title: 'Error',
-        description: 'Period start and end required for custom date range.',
-        variant: 'destructive',
-      });
+      toast.error('Period start and end required for custom date range.');
       return;
     }
     try {
@@ -174,27 +158,16 @@ export default function ReportsPage() {
         periodEnd: '',
         customNotes: '',
       });
-      toast({
-        title: 'Success',
-        description: 'Report generated successfully.',
-      });
+      toast.success('Report generated successfully.');
     } catch (err) {
       console.error('[reports] generate error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate report.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to generate report.');
     }
   };
-
   // Fix 8: download via backend URL — GET /reports/{id}/download provides download_url
   const handleDownloadReport = async (report: ReportListItem) => {
     if (!report.canDownload) {
-      toast({
-        title: 'Info',
-        description: 'Report is still processing. Please try again later.',
-      });
+      toast.info('Report is still processing. Please try again later.');
       return;
     }
     try {
@@ -223,34 +196,21 @@ export default function ReportsPage() {
         link.click();
         URL.revokeObjectURL(url);
       }
-      toast({ title: 'Success', description: `Downloaded ${report.name}.` });
+      toast.success(`Downloaded ${report.name}.`);
     } catch (err) {
       console.error('[reports] download error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to download report.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to download report.');
     }
   };
-
   const handleDeleteReport = async (reportId: string, reportName: string) => {
     try {
       await deleteReport.mutateAsync(reportId);
-      toast({
-        title: 'Deleted',
-        description: `${reportName} has been deleted.`,
-      });
+      toast.success(`${reportName} has been deleted.`);
     } catch (err) {
       console.error('[reports] delete error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete report.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to delete report.');
     }
   };
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>

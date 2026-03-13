@@ -35,13 +35,13 @@ import {
   useUpdateInvestigationProgress,
   useUpdateInvestigationStatus,
 } from '@/hooks/queries/useInvestigations';
-import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/helpers';
 import { CasePriority, CaseStatus } from '@/types/investigation';
 import { AlertCircle, ChevronLeft, FileText, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 // Fix 26: keyed on UPPERCASE backend values
 const STATUS_LABELS: Record<CaseStatus, string> = {
@@ -85,48 +85,32 @@ const TERMINAL_STATUSES: CaseStatus[] = [
 export default function InvestigationDetailPage() {
   const params = useParams();
   const investigationId = params.id as string;
-  const { toast } = useToast();
-
   const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
   const [updateProgressOpen, setUpdateProgressOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
-
   const [newStatus, setNewStatus] = useState<CaseStatus | ''>('');
   const [resolutionSummary, setResolutionSummary] = useState('');
   const [estimatedLoss, setEstimatedLoss] = useState('');
-
   const [newProgress, setNewProgress] = useState(0);
   const [findings, setFindings] = useState('');
-
   const [closeStatus, setCloseStatus] = useState<
     'CONFIRMED_FRAUD' | 'CLEARED' | 'CLOSED' | ''
   >('');
   const [closeResolution, setCloseResolution] = useState('');
   const [closeLoss, setCloseLoss] = useState('');
-
   // Fix 23: useInvestigationById hook replaces useEffect + mock
   const { data: inv, isLoading } = useInvestigationById(investigationId);
-
   const updateStatus = useUpdateInvestigationStatus();
   const updateProgress = useUpdateInvestigationProgress();
   const closeInvestigation = useCloseInvestigation();
-
   const handleUpdateStatus = async () => {
     if (!newStatus) {
-      toast({
-        title: 'Error',
-        description: 'Please select a status.',
-        variant: 'destructive',
-      });
+      toast.error('Please select a status.');
       return;
     }
     const isTerminal = TERMINAL_STATUSES.includes(newStatus as CaseStatus);
     if (isTerminal && !resolutionSummary.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Resolution summary is required for this status.',
-        variant: 'destructive',
-      });
+      toast.error('Resolution summary is required for this status.');
       return;
     }
     try {
@@ -143,17 +127,12 @@ export default function InvestigationDetailPage() {
       setNewStatus('');
       setResolutionSummary('');
       setEstimatedLoss('');
-      toast({ title: 'Success', description: 'Status updated.' });
+      toast.success('Status updated.');
     } catch (err) {
       console.error('[investigations] status error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update status.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update status.');
     }
   };
-
   const handleUpdateProgress = async () => {
     try {
       // Fix 19: payload shape { progress, findings? }
@@ -163,25 +142,15 @@ export default function InvestigationDetailPage() {
       });
       setUpdateProgressOpen(false);
       setFindings('');
-      toast({ title: 'Success', description: 'Progress updated.' });
+      toast.success('Progress updated.');
     } catch (err) {
       console.error('[investigations] progress error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update progress.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update progress.');
     }
   };
-
   const handleClose = async () => {
     if (!closeStatus || !closeResolution.trim()) {
-      toast({
-        title: 'Error',
-        description:
-          'Please select an outcome and provide a resolution summary.',
-        variant: 'destructive',
-      });
+      toast.error('Please select an outcome and provide a resolution summary.');
       return;
     }
     try {
@@ -196,17 +165,12 @@ export default function InvestigationDetailPage() {
       setCloseStatus('');
       setCloseResolution('');
       setCloseLoss('');
-      toast({ title: 'Success', description: 'Investigation closed.' });
+      toast.success('Investigation closed.');
     } catch (err) {
       console.error('[investigations] close error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to close investigation.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to close investigation.');
     }
   };
-
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -216,7 +180,6 @@ export default function InvestigationDetailPage() {
       </DashboardLayout>
     );
   }
-
   if (!inv) {
     return (
       <DashboardLayout>
@@ -229,9 +192,7 @@ export default function InvestigationDetailPage() {
       </DashboardLayout>
     );
   }
-
   const canClose = inv.quickActions.canClose && inv.status !== 'CLOSED';
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>

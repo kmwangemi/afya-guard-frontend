@@ -9,11 +9,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 const USER_KEY = 'users';
 const ROLES_KEY = 'roles';
 
-// ── Existing /me hooks (unchanged) ───────────────────────────────────────────
+// ── Existing /profile hooks (unchanged) ───────────────────────────────────────────
 
 export function useMyProfile() {
   return useQuery({
-    queryKey: [USER_KEY, 'me'],
+    queryKey: [USER_KEY, 'profile'],
     queryFn: () => userService.getMyProfile(),
     staleTime: 5 * 60 * 1000,
   });
@@ -21,7 +21,7 @@ export function useMyProfile() {
 
 export function useMyStats() {
   return useQuery({
-    queryKey: [USER_KEY, 'me', 'stats'],
+    queryKey: [USER_KEY, 'profile', 'stats'],
     queryFn: () => userService.getMyStats(),
     staleTime: 5 * 60 * 1000,
   });
@@ -31,7 +31,7 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: userService.updateMyProfile,
-    onSuccess: () => qc.invalidateQueries({ queryKey: [USER_KEY, 'me'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [USER_KEY, 'profile'] }),
   });
 }
 

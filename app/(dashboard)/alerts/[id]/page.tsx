@@ -20,13 +20,13 @@ import {
   useAssignAlert,
   useUpdateAlertStatus,
 } from '@/hooks/queries/useAlerts';
-import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatDate } from '@/lib/helpers';
 import { AlertStatus } from '@/types/alert';
 import { AlertCircle, ArrowLeft, Download, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 // Human-readable labels for AlertStatus values
 const STATUS_LABELS: Record<AlertStatus, string> = {
@@ -41,24 +41,19 @@ const STATUS_LABELS: Record<AlertStatus, string> = {
 export default function AlertDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
   const alertId = params.id as string;
-
   // Fix 16: status transitions are driven by alert.availableStatusTransitions from backend
   const [selectedStatus, setSelectedStatus] = useState<AlertStatus | ''>('');
   // Fix 18: backend needs a UUID, not a name — using a text input pending real user-list API
   const [assignUserId, setAssignUserId] = useState('');
   const [showAssignPanel, setShowAssignPanel] = useState(false);
   const [statusNote, setStatusNote] = useState('');
-
   const { data: alert, isLoading } = useAlertById(alertId);
-
   // Fix 17: payload is now { alertId, payload: { status, note } }
   const updateAlertStatus = useUpdateAlertStatus();
   // Fix 18: payload is now { alertId, payload: { userId } }
   const assignAlert = useAssignAlert();
   const acknowledgeAlert = useAcknowledgeAlert();
-
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -68,7 +63,6 @@ export default function AlertDetailsPage() {
       </DashboardLayout>
     );
   }
-
   if (!alert) {
     return (
       <DashboardLayout>
@@ -87,7 +81,6 @@ export default function AlertDetailsPage() {
       </DashboardLayout>
     );
   }
-
   // Fix 17: wrap status in payload object
   const handleStatusChange = async (newStatus: AlertStatus) => {
     try {
@@ -97,20 +90,12 @@ export default function AlertDetailsPage() {
       });
       setSelectedStatus(newStatus);
       setStatusNote('');
-      toast({
-        title: 'Status updated',
-        description: `Alert moved to ${STATUS_LABELS[newStatus]}.`,
-      });
+      toast.success('Status updated successfully.');
     } catch (err) {
       console.error('[alerts] status update error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to update status.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to update status.');
     }
   };
-
   // Fix 18: send { userId } instead of { investigatorId, investigatorName }
   const handleAssignAlert = async () => {
     if (!assignUserId.trim()) return;
@@ -121,39 +106,25 @@ export default function AlertDetailsPage() {
       });
       setShowAssignPanel(false);
       setAssignUserId('');
-      toast({
-        title: 'Alert assigned',
-        description: 'Analyst has been notified.',
-      });
+      toast.success('Alert assigned successfully.');
     } catch (err) {
       console.error('[alerts] assign error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to assign alert.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to assign alert.');
     }
   };
-
   const handleAcknowledge = async () => {
     try {
       await acknowledgeAlert.mutateAsync({ alertId });
-      toast({ title: 'Alert acknowledged' });
+      toast.success('Alert acknowledged successfully.');
     } catch (err) {
       console.error('[alerts] acknowledge error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to acknowledge alert.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to acknowledge alert.');
     }
   };
-
   // Aliases for cleaner JSX
   const summary = alert.alertSummary;
   const relatedClaim = alert.relatedClaim;
   const fraud = alert.fraudAnalysis;
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>

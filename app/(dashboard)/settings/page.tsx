@@ -10,31 +10,12 @@ import {
   useMyProfile,
   useUpdateProfile,
 } from '@/hooks/queries/useUsers';
-import { apiClient } from '@/lib/api';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Eye, Lock, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface Role {
-  id: string;
-  name: string;
-  display_name: string | null;
-  description: string | null;
-  is_system_role: boolean;
-}
-
-interface RegisterUserPayload {
-  email: string;
-  full_name: string;
-  phone: string;
-  password: string;
-  role_ids: string[];
-  is_superuser: boolean;
-}
 
 interface ProfileFormValues {
   firstName: string;
@@ -49,36 +30,11 @@ interface PasswordFormValues {
   confirmPassword: string;
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
-
-function useRoles() {
-  return useQuery<Role[]>({
-    queryKey: ['roles'],
-    queryFn: async () => {
-      const res = await apiClient.get('/roles');
-      return res.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-function useRegisterUser() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: RegisterUserPayload) => {
-      const res = await apiClient.post('/users', payload);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-}
-
 // ── Profile Section ───────────────────────────────────────────────────────────
 
 function ProfileSection() {
   const { data: profile, isLoading } = useMyProfile();
+  console.log('profile--->', profile);
   const updateProfile = useUpdateProfile();
   const {
     register,

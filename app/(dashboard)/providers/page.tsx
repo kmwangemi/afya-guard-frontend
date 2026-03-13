@@ -30,16 +30,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAddProvider, useProviders } from '@/hooks/queries/useProviders';
-import { useToast } from '@/hooks/use-toast';
 import { FACILITY_TYPES, KENYAN_COUNTIES } from '@/lib/constants';
 import { formatPercentage } from '@/lib/helpers';
 import { FacilityType, ProviderFilterParams } from '@/types/provider';
 import { Building2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ProvidersPage() {
-  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
@@ -56,7 +55,6 @@ export default function ProvidersPage() {
     email: '',
     bedCapacity: '',
   });
-
   // Fix 11: facilityType is already stored UPPERCASE from the Select values
   const filters: ProviderFilterParams = {};
   if (search) filters.search = search;
@@ -64,16 +62,13 @@ export default function ProvidersPage() {
   if (facilityType) filters.facilityType = facilityType as FacilityType;
   if (riskLevel)
     filters.riskLevel = riskLevel as ProviderFilterParams['riskLevel'];
-
   const { data: providersResponse, isLoading } = useProviders(
     filters,
     page,
     pageSize,
   );
-
   // Fix 21: replaced mockProvidersService.addProvider with useAddProvider hook
   const addProvider = useAddProvider();
-
   const handleAddProvider = async () => {
     if (
       !formData.name ||
@@ -81,12 +76,9 @@ export default function ProvidersPage() {
       !formData.facilityType ||
       !formData.county
     ) {
-      toast({
-        title: 'Error',
-        description:
-          'Provider Name, SHA Code, Facility Type and County are required.',
-        variant: 'destructive',
-      });
+      toast.error(
+        'Provider Name, SHA Code, Facility Type and County are required.',
+      );
       return;
     }
     try {
@@ -111,17 +103,12 @@ export default function ProvidersPage() {
         email: '',
         bedCapacity: '',
       });
-      toast({ title: 'Success', description: 'Provider added successfully.' });
+      toast.success('Provider added successfully.');
     } catch (err) {
       console.error('[providers] add error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to add provider.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to add provider.');
     }
   };
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>

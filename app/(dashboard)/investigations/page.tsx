@@ -33,7 +33,6 @@ import {
   useCreateInvestigation,
   useInvestigations,
 } from '@/hooks/queries/useInvestigations';
-import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/helpers';
 import {
   CasePriority,
@@ -43,6 +42,7 @@ import {
 import { FolderOpen, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 // Fix 35: UPPERCASE keys matching CasePriority; URGENT replaces critical
 const PRIORITY_COLORS: Record<CasePriority, string> = {
@@ -69,7 +69,6 @@ const STATUS_LABELS: Record<CaseStatus, string> = {
 };
 
 export default function InvestigationsPage() {
-  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   // Fix 31: search wired to filters
@@ -102,34 +101,20 @@ export default function InvestigationsPage() {
     page,
     pageSize,
   );
-
   // Fix 30: uses hook (invalidates list cache) instead of mockInvestigationsService
   const createInvestigation = useCreateInvestigation();
-
   const handleCreateInvestigation = async () => {
     // Fix 30: claimId + fraudScoreId are required by InvestigationCreate
     if (!formData.claimId.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Claim ID is required.',
-        variant: 'destructive',
-      });
+      toast.error('Claim ID is required.');
       return;
     }
     if (!formData.fraudScoreId.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Fraud Score ID is required.',
-        variant: 'destructive',
-      });
+      toast.error('Fraud Score ID is required.');
       return;
     }
     if (!formData.priority) {
-      toast({
-        title: 'Error',
-        description: 'Please select a priority level.',
-        variant: 'destructive',
-      });
+      toast.error('Please select a priority level.');
       return;
     }
     try {
@@ -150,20 +135,12 @@ export default function InvestigationsPage() {
         notes: '',
         targetDate: '',
       });
-      toast({
-        title: 'Success',
-        description: 'Investigation created successfully.',
-      });
+      toast.success('Investigation created successfully.');
     } catch (err) {
       console.error('[investigations] create error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to create investigation.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to create investigation.');
     }
   };
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>
