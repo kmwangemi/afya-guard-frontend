@@ -19,7 +19,6 @@ import {
   useProviderById,
   useSuspendProvider,
 } from '@/hooks/queries/useProviders';
-import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatDate, formatPercentage } from '@/lib/helpers';
 import {
   AlertCircle,
@@ -31,75 +30,50 @@ import {
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ProviderDetailPage() {
   const params = useParams();
   const providerId = params.id as string;
-  const { toast } = useToast();
-
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
   const [flagReason, setFlagReason] = useState('');
-
   // Fix 12: useProviderById replaces useEffect + mockProvidersService.getProviderById
   const { data: provider, isLoading } = useProviderById(providerId);
-
   // Fix 20: mutation hooks replace direct service calls
   const suspendProvider = useSuspendProvider();
   const flagForReview = useFlagProviderForReview();
-
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a reason for suspending the provider.',
-        variant: 'destructive',
-      });
+      toast.error('Please provide a reason for suspending the provider.');
       return;
     }
     try {
       await suspendProvider.mutateAsync({ providerId, reason: suspendReason });
       setSuspendDialogOpen(false);
       setSuspendReason('');
-      toast({ title: 'Success', description: 'Provider has been suspended.' });
+      toast.success('Provider has been suspended.');
     } catch (err) {
       console.error('[providers] suspend error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to suspend provider.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to suspend provider.');
     }
   };
-
   const handleFlag = async () => {
     if (!flagReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a reason for flagging the provider.',
-        variant: 'destructive',
-      });
+      toast('Please provide a reason for flagging the provider.');
       return;
     }
     try {
       await flagForReview.mutateAsync({ providerId, reason: flagReason });
       setFlagDialogOpen(false);
       setFlagReason('');
-      toast({
-        title: 'Success',
-        description: 'Provider has been flagged for review.',
-      });
+      toast.success('Provider has been flagged for review.');
     } catch (err) {
       console.error('[providers] flag error:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to flag provider.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to flag provider.');
     }
   };
-
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -109,7 +83,6 @@ export default function ProviderDetailPage() {
       </DashboardLayout>
     );
   }
-
   if (!provider) {
     return (
       <DashboardLayout>
@@ -122,7 +95,6 @@ export default function ProviderDetailPage() {
       </DashboardLayout>
     );
   }
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>
@@ -163,7 +135,7 @@ export default function ProviderDetailPage() {
             <p className='text-sm text-gray-600 mb-2'>Risk Score</p>
             <RiskScoreBadge
               score={provider.header.riskScore ?? 0}
-              level={provider.header.riskLevel ?? 'low'}
+              level={provider.header.riskLevel ?? 'LOW'}
             />
           </Card>
           <Card className='p-6'>

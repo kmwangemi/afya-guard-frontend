@@ -14,18 +14,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useClaims } from '@/hooks/queries/useClaims';
-import { useToast } from '@/hooks/use-toast';
 import { claimsService } from '@/services/claimsService';
 import { ClaimFilterParams } from '@/types/claim';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, FileText, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ClaimsPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -33,26 +31,22 @@ export default function ClaimsPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
   const {
     data: claimsResponse,
     isLoading,
     isError,
     error,
   } = useClaims(filters, page, pageSize);
-
   // Fix 1: removed `page: undefined` spread — ClaimFilterParams has no page field
   //         and it caused a TypeScript error. Resetting page is handled separately.
   const handleFilter = (newFilters: Partial<ClaimFilterParams>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };
-
   const handleReset = () => {
     setFilters({});
     setPage(1);
   };
-
   const handleExport = async () => {
     try {
       const blob = await claimsService.exportClaims('csv');
@@ -62,20 +56,12 @@ export default function ClaimsPage() {
       a.download = `claims-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast({
-        title: 'Export started',
-        description: 'Your file will download shortly.',
-      });
+      toast.info('Your file will download shortly.');
     } catch (err) {
       console.error('[claims] export error:', err);
-      toast({
-        title: 'Export failed',
-        description: 'Could not export claims.',
-        variant: 'destructive',
-      });
+      toast.error('Could not export claims.');
     }
   };
-
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -85,53 +71,37 @@ export default function ClaimsPage() {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
     if (!allowed.includes(file.type)) {
-      toast({
-        title: 'Invalid file',
-        description: 'Please upload a CSV or Excel file.',
-        variant: 'destructive',
-      });
+      toast.error('Please upload a CSV or Excel file.');
       return;
     }
     setUploadedFile(file);
   };
-
   const resetUploadDialog = () => {
     setUploadedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
   const handleUploadSubmit = async () => {
     if (!uploadedFile) {
-      toast({
-        title: 'No file selected',
-        description: 'Please select a file to upload.',
-        variant: 'destructive',
-      });
+      toast.error('Please select a file to upload.');
       return;
     }
     setIsProcessing(true);
     try {
       const result = await claimsService.uploadClaims(uploadedFile);
-      toast({
-        title: 'Upload successful',
-        description: `${uploadedFile.name} imported — ${result.imported} claim(s) added.`,
-      });
+      toast.success(
+        `${uploadedFile.name} imported — ${result.imported} claim(s) added.`,
+      );
       setUploadDialogOpen(false);
       resetUploadDialog();
       // Fix 2: invalidate the list so newly imported claims appear immediately
       queryClient.invalidateQueries({ queryKey: ['claims', 'list'] });
     } catch (err) {
       console.error('[claims] upload error:', err);
-      toast({
-        title: 'Upload failed',
-        description: 'Could not process the file.',
-        variant: 'destructive',
-      });
+      toast.error('Could not process the file.');
     } finally {
       setIsProcessing(false);
     }
   };
-
   return (
     <DashboardLayout>
       <div className='space-y-6'>

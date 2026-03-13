@@ -14,7 +14,6 @@ import {
   useToggleRule,
   useUpdateRule,
 } from '@/hooks/queries/useML';
-import { useToast } from '@/hooks/use-toast';
 import {
   CreateRulePayload,
   FraudRule,
@@ -55,6 +54,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -278,7 +278,6 @@ type RuleFormValues = {
 };
 
 function RuleDrawer({ mode, rule, onClose }: RuleDrawerProps) {
-  const { toast } = useToast();
   const createMut = useCreateRule();
   const updateMut = useUpdateRule(rule?.id ?? '');
   const selectedField = RULE_FIELDS.find(f => f.value === rule?.config?.field);
@@ -334,10 +333,7 @@ function RuleDrawer({ mode, rule, onClose }: RuleDrawerProps) {
           weight: v.weight,
           config,
         } satisfies CreateRulePayload);
-        toast({
-          title: 'Rule created',
-          description: `"${v.displayName || v.ruleName}" is now active.`,
-        });
+        toast.success(`"${v.displayName || v.ruleName}" is now active.`);
       } else {
         await updateMut.mutateAsync({
           displayName: v.displayName || undefined,
@@ -346,18 +342,11 @@ function RuleDrawer({ mode, rule, onClose }: RuleDrawerProps) {
           weight: v.weight,
           config,
         } satisfies UpdateRulePayload);
-        toast({
-          title: 'Rule updated',
-          description: 'Changes saved successfully.',
-        });
+        toast.success('Changes saved successfully.');
       }
       onClose();
     } catch (err: unknown) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed',
-        variant: 'destructive',
-      });
+      toast.error(err instanceof Error ? err.message : 'Failed');
     }
   }
   return (
@@ -599,7 +588,6 @@ function RuleDrawer({ mode, rule, onClose }: RuleDrawerProps) {
 // ─── Register Model Drawer ────────────────────────────────────────────────────
 
 function RegisterModelDrawer({ onClose }: { onClose: () => void }) {
-  const { toast } = useToast();
   const registerMut = useRegisterModel();
   type ModelFormValues = {
     versionName: string;
@@ -648,17 +636,10 @@ function RegisterModelDrawer({ onClose }: { onClose: () => void }) {
         performanceMetrics: Object.keys(metrics).length ? metrics : undefined,
         featureNames: features,
       } satisfies RegisterModelPayload);
-      toast({
-        title: 'Model registered',
-        description: `${v.versionName} added to the registry.`,
-      });
+      toast.success(`${v.versionName} added to the registry.`);
       onClose();
     } catch (err: unknown) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed',
-        variant: 'destructive',
-      });
+      toast.error(err instanceof Error ? err.message : 'Failed');
     }
   }
   return (
@@ -972,7 +953,6 @@ function RulesTab() {
   const [editTarget, setEditTarget] = useState<FraudRule | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toggleMut = useToggleRule();
-  const { toast } = useToast();
   const { data: rules = [], isLoading } = useRules();
   const filtered = rules.filter(r => {
     const matchCat = catFilter === 'all' || r.category === catFilter;
@@ -993,16 +973,9 @@ function RulesTab() {
   async function handleToggle(rule: FraudRule) {
     try {
       const res = await toggleMut.mutateAsync(rule.id);
-      toast({
-        title: res.isActive ? 'Rule enabled' : 'Rule disabled',
-        description: res.message,
-      });
+      toast.success(res.message);
     } catch (err: unknown) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed',
-        variant: 'destructive',
-      });
+      toast.error(err instanceof Error ? err.message : 'Failed');
     }
   }
   return (
@@ -1269,20 +1242,15 @@ function ModelsTab() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { data: models = [], isLoading } = useModels();
   const deployMut = useDeployModel();
-  const { toast } = useToast();
   const deployed = models.find(m => m.isDeployed);
   const undeployed = models.filter(m => !m.isDeployed);
   async function handleDeploy() {
     if (!deployTarget) return;
     try {
       const res = await deployMut.mutateAsync(deployTarget.id);
-      toast({ title: 'Model deployed', description: res.message });
+      toast.success(res.message);
     } catch (err: unknown) {
-      toast({
-        title: 'Deploy failed',
-        description: err instanceof Error ? err.message : 'Error',
-        variant: 'destructive',
-      });
+      toast.error(err instanceof Error ? err.message : 'Error');
     } finally {
       setDeployTarget(null);
     }

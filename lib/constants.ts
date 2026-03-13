@@ -143,7 +143,9 @@ export const KENYAN_COUNTIES = [
 export const PAGINATION_OPTIONS = [10, 25, 50, 100];
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+// export const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 export const API_TIMEOUT = 30000; // 30 seconds
 

@@ -129,25 +129,25 @@ function mapListItem(a: ApiUserListItem): UserListItem {
 export const userService = {
   // ── Own profile ─────────────────────────────────────────────────────────────
 
-  /** GET /api/v1/users/me */
+  /** GET /api/v1/users/profile */
   getMyProfile: async (): Promise<UserProfile> => {
-    const data = await api.get<ApiUserProfile>('/users/me');
+    const data = await api.get<ApiUserProfile>('/users/profile');
     return mapProfile(data);
   },
-  /** PATCH /api/v1/users/me */
+  /** PATCH /api/v1/users/profile */
   updateMyProfile: async (
     payload: UpdateProfilePayload,
   ): Promise<UserProfile> => {
-    const data = await api.patch<ApiUserProfile>('/users/me', {
+    const data = await api.patch<ApiUserProfile>('/users/profile', {
       full_name: payload.fullName,
       phone: payload.phone,
       department: payload.department,
     });
     return mapProfile(data);
   },
-  /** GET /api/v1/users/me/stats */
+  /** GET /api/v1/users/profile/stats */
   getMyStats: async (): Promise<UserPerformanceStats> => {
-    const data = await api.get<ApiPerformanceStats>('/users/me/stats');
+    const data = await api.get<ApiPerformanceStats>('/users/profile/stats');
     return {
       casesInvestigated: data.cases_investigated,
       alertsReviewed: data.alerts_reviewed,
