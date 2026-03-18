@@ -14,7 +14,10 @@ export function useClaims(
   return useQuery({
     queryKey: [CLAIMS_KEY, 'list', filters, page, pageSize],
     queryFn: () => claimsService.getClaims(filters, page, pageSize),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -24,7 +27,10 @@ export function useClaimById(claimId: string) {
   return useQuery({
     queryKey: [CLAIMS_KEY, 'detail', claimId],
     queryFn: () => claimsService.getClaimById(claimId),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!claimId,
   });
 }
@@ -36,7 +42,10 @@ export function useClaimAnalysis(claimId: string) {
   return useQuery({
     queryKey: [CLAIMS_KEY, 'detail', claimId, 'analysis'],
     queryFn: () => claimsService.getClaimAnalysis(claimId),
-    staleTime: 10 * 60 * 1000,
+    // staleTime: 10 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!claimId,
   });
 }

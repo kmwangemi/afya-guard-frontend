@@ -22,8 +22,11 @@ export function useInvestigations(
     queryKey: [INV_KEY, 'list', filters, page, pageSize],
     queryFn: () =>
       investigationsService.getInvestigations(filters, page, pageSize),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    // refetchInterval: 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 16: scoped key ['investigations', 'detail', id] — was colliding with list key
@@ -33,7 +36,10 @@ export function useInvestigationById(investigationId: string) {
     queryKey: [INV_KEY, 'detail', investigationId],
     queryFn: () => investigationsService.getInvestigationById(investigationId),
     enabled: !!investigationId,
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -42,7 +48,10 @@ export function useInvestigationNotes(investigationId: string) {
     queryKey: [INV_KEY, 'notes', investigationId],
     queryFn: () => investigationsService.getNotes(investigationId),
     enabled: !!investigationId,
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 17: useInvestigationStats removed — no backend endpoint

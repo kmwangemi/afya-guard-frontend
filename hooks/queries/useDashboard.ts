@@ -7,8 +7,11 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'stats'],
     queryFn: () => dashboardService.getStats(),
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    // refetchInterval: 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -16,8 +19,11 @@ export function useClaimsTrend(days: number = 30) {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'trend', days],
     queryFn: () => dashboardService.getTrendData(days),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    // refetchInterval: 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -25,8 +31,11 @@ export function useCountyFraudAnalysis(limit: number = 10) {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'counties', limit],
     queryFn: () => dashboardService.getCountyFraudData(limit),
-    staleTime: 10 * 60 * 1000,
-    refetchInterval: 2 * 60 * 1000,
+    // staleTime: 10 * 60 * 1000,
+    // refetchInterval: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -34,8 +43,11 @@ export function useRecentAlerts(limit: number = 10) {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'critical-alerts', limit],
     queryFn: () => dashboardService.getCriticalAlerts(limit),
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 30 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    // refetchInterval: 30 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -43,8 +55,11 @@ export function useDashboard(trendDays: number = 30) {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'full', trendDays],
     queryFn: () => dashboardService.getDashboard(trendDays),
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    // refetchInterval: 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -52,8 +67,11 @@ export function useRiskDistribution() {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'risk-distribution'],
     queryFn: () => dashboardService.getRiskDistribution(),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 2 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    // refetchInterval: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -65,8 +83,11 @@ export function useTopFlaggedProviders(limit: number = 10, days: number = 30) {
   return useQuery({
     queryKey: [DASHBOARD_QUERY_KEY, 'top-providers', limit, days],
     queryFn: () => dashboardService.getTopFlaggedProviders(limit, days),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 2 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    // refetchInterval: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -83,6 +104,9 @@ export function useProviderSubmissionTrend(
     queryFn: () =>
       dashboardService.getProviderSubmissionTrend(providerId!, days),
     enabled: !!providerId,
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }

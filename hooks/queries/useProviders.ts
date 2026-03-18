@@ -14,7 +14,10 @@ export function useProviders(
   return useQuery({
     queryKey: [PROVIDERS_KEY, 'list', filters, page, pageSize],
     queryFn: () => providersService.getProviders(filters, page, pageSize),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -24,7 +27,10 @@ export function useProviderById(providerId: string) {
   return useQuery({
     queryKey: [PROVIDERS_KEY, 'detail', providerId],
     queryFn: () => providersService.getProviderById(providerId),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!providerId,
   });
 }
@@ -36,7 +42,10 @@ export function useProviderStatistics(providerId: string) {
   return useQuery({
     queryKey: [PROVIDERS_KEY, 'detail', providerId], // same key → shares cache with useProviderById
     queryFn: () => providersService.getProviderById(providerId),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!providerId,
     select: data => data.statistics,
   });
@@ -47,7 +56,10 @@ export function useProviderFraudHistory(providerId: string) {
   return useQuery({
     queryKey: [PROVIDERS_KEY, 'detail', providerId], // shares cache
     queryFn: () => providersService.getProviderById(providerId),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!providerId,
     select: data => data.fraudHistory,
   });
@@ -62,7 +74,10 @@ export function useProviderClaims(
     queryKey: [PROVIDERS_KEY, 'claims', providerId, page, pageSize],
     queryFn: () =>
       providersService.getProviderClaims(providerId, page, pageSize),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     enabled: !!providerId,
   });
 }
