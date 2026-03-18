@@ -15,7 +15,10 @@ export function useMyProfile() {
   return useQuery({
     queryKey: [USER_KEY, 'profile'],
     queryFn: () => userService.getMyProfile(),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -23,7 +26,10 @@ export function useMyStats() {
   return useQuery({
     queryKey: [USER_KEY, 'profile', 'stats'],
     queryFn: () => userService.getMyStats(),
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -52,7 +58,10 @@ export function useUsers(
   return useQuery({
     queryKey: [USER_KEY, 'list', params],
     queryFn: () => userService.listUsers(params),
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
     placeholderData: prev => prev, // keep previous data while fetching next page
   });
 }
@@ -64,7 +73,10 @@ export function useUser(userId: string | null) {
     queryKey: [USER_KEY, userId],
     queryFn: () => userService.getUser(userId!),
     enabled: !!userId,
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 

@@ -20,8 +20,11 @@ export function useAlerts(
   return useQuery({
     queryKey: [ALERTS_KEY, 'list', filters, page, pageSize],
     queryFn: () => alertsService.getAlerts(filters, page, pageSize),
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 30 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    // refetchInterval: 30 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 8: was [ALERTS_KEY, alertId] — collided with list key structure
@@ -30,7 +33,10 @@ export function useAlertById(alertId: string) {
     queryKey: [ALERTS_KEY, 'detail', alertId],
     queryFn: () => alertsService.getAlertById(alertId),
     enabled: !!alertId,
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 9: no getCriticalAlerts endpoint — delegates to GET /alerts?severity=CRITICAL&page_size=limit
@@ -38,7 +44,10 @@ export function useCriticalAlerts(limit: number = 10) {
   return useQuery({
     queryKey: [ALERTS_KEY, 'critical', limit],
     queryFn: () => alertsService.getCriticalAlerts(limit),
-    staleTime: 1 * 60 * 1000,
+    // staleTime: 1 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 10: no getAlertStats endpoint — removed. Use useAlerts with status filters

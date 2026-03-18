@@ -17,7 +17,10 @@ export function useRules(
   return useQuery({
     queryKey: [RULES_KEY, params],
     queryFn: () => mlService.listRules(params),
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 
@@ -63,7 +66,10 @@ export function useModels() {
   return useQuery({
     queryKey: [MODELS_KEY],
     queryFn: () => mlService.listModels(),
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 

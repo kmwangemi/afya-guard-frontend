@@ -16,7 +16,10 @@ export function useReports(
   return useQuery({
     queryKey: [REPORTS_KEY, 'list', filters, page, pageSize],
     queryFn: () => reportsService.getReports(filters, page, pageSize),
-    staleTime: 2 * 60 * 1000,
+    // staleTime: 2 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 9: full detail with key_metrics, summary_text etc.
@@ -25,7 +28,10 @@ export function useReportById(reportId: string, enabled = true) {
     queryKey: [REPORTS_KEY, 'detail', reportId],
     queryFn: () => reportsService.getReportById(reportId),
     enabled: !!reportId && enabled,
-    staleTime: 5 * 60 * 1000,
+    // staleTime: 5 * 60 * 1000,
+    staleTime: 0, // always consider data stale — fetch on every trigger
+    refetchInterval: 5 * 1000, // poll every 5 seconds
+    refetchIntervalInBackground: true, // keep polling even when tab is not focused
   });
 }
 // Fix 8: download endpoint — fetches download_url from backend
