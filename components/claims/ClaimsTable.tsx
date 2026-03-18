@@ -1,6 +1,7 @@
 "use client";
 
-import { Claim } from "@/types/claim";
+import { RiskScoreBadge } from "@/components/shared/RiskScoreBadge";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -10,9 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RiskScoreBadge } from "@/components/shared/RiskScoreBadge";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatDate, formatCurrency, maskPatientId } from "@/lib/helpers";
+import { formatCurrency, formatDate, maskPatientId } from "@/lib/helpers";
+import { Claim } from "@/types/claim";
+import { FileX } from 'lucide-react';
 import Link from "next/link";
 
 interface ClaimsTableProps {
@@ -44,6 +45,25 @@ export function ClaimsTable({ claims, onSelectionChange, isLoading }: ClaimsTabl
         {[...Array(5)].map((_, i) => (
           <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
         ))}
+      </div>
+    );
+  }
+
+  if (claims.length === 0) {
+    return (
+      <div className='border border-gray-200 rounded-lg overflow-hidden'>
+        <div className='flex flex-col items-center justify-center py-16 px-4 text-center'>
+          <div className='bg-gray-100 rounded-full p-4 mb-4'>
+            <FileX className='w-8 h-8 text-gray-400' />
+          </div>
+          <h3 className='text-base font-semibold text-gray-900 mb-1'>
+            No claims found
+          </h3>
+          <p className='text-sm text-gray-500 max-w-sm'>
+            There are no claims matching your current filters. Try adjusting
+            your search or filters to find what you're looking for.
+          </p>
+        </div>
       </div>
     );
   }
