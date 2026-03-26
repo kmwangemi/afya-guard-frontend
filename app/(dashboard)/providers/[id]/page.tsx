@@ -19,7 +19,7 @@ import {
   useProviderById,
   useSuspendProvider,
 } from '@/hooks/queries/useProviders';
-import { formatCurrency, formatDate, formatPercentage } from '@/lib/helpers';
+import { formatCurrency, formatDate, formatProviderPercentage } from '@/lib/helpers';
 import {
   AlertCircle,
   ChevronLeft,
@@ -148,7 +148,7 @@ export default function ProviderDetailPage() {
             <p className='text-sm text-gray-600 mb-2'>Flagged Claims %</p>
             {/* Fix 14: was provider.statistics.flaggedPercentage */}
             <p className='text-2xl font-bold text-red-600'>
-              {formatPercentage(provider.header.flaggedClaimsPercentage)}
+              {formatProviderPercentage(provider.header.flaggedClaimsPercentage)}
             </p>
           </Card>
           <Card className='p-6'>
@@ -272,7 +272,7 @@ export default function ProviderDetailPage() {
                 <div className='bg-gray-50 p-4 rounded-lg'>
                   <p className='text-xs text-gray-600 mb-1'>Rejection Rate</p>
                   <p className='text-xl font-bold text-gray-900'>
-                    {formatPercentage(provider.statistics.rejectionRate)}
+                    {formatProviderPercentage(provider.statistics.rejectionRate)}
                   </p>
                 </div>
                 <div className='bg-gray-50 p-4 rounded-lg'>
