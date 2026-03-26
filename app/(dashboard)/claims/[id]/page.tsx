@@ -28,6 +28,7 @@ import {
   formatDate,
   formatDateTime,
   maskPatientId,
+  maskProviderId,
 } from '@/lib/helpers';
 import {
   AlertCircle,
@@ -260,7 +261,9 @@ export default function ClaimDetailPage() {
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Provider ID</p>
-                  <p className='font-mono text-gray-900'>{claim.providerId}</p>
+                  <p className='font-mono text-gray-900'>
+                    {maskProviderId(claim.providerId)}
+                  </p>
                 </div>
                 <div>
                   <p className='text-sm text-gray-600'>Diagnosis</p>
