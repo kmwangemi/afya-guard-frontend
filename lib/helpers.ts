@@ -1,6 +1,7 @@
 import { RISK_COLORS, CLAIM_STATUS_COLORS, ALERT_STATUS_COLORS } from "./constants";
-import { RiskLevel, ClaimStatus } from "@/types/claim";
+import { ClaimStatus } from "@/types/claim";
 import { AlertStatus } from "@/types/alert";
+import { RiskLevel } from '@/types/common';
 
 /**
  * Format currency to KSh with proper formatting
@@ -107,7 +108,7 @@ export const truncateText = (text: string, maxLength: number): string => {
  * Format percentage
  */
 export const formatPercentage = (value: number): string => {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(value).toFixed(1)}%`;
 };
 
 /**
