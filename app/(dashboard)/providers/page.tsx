@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import { useAddProvider, useProviders } from '@/hooks/queries/useProviders';
 import { FACILITY_TYPES, KENYAN_COUNTIES } from '@/lib/constants';
-import { formatProviderPercentage } from '@/lib/helpers';
+import { formatProviderPercentage, maskProviderId } from '@/lib/helpers';
 import { FacilityType, ProviderFilterParams } from '@/types/provider';
 import { Building2, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -258,7 +258,7 @@ export default function ProvidersPage() {
                       <div>
                         <p className='text-gray-900'>{provider.name}</p>
                         <p className='text-xs text-gray-500'>
-                          {provider.shaProviderCode}
+                          {maskProviderId(provider.shaProviderCode)}
                         </p>
                       </div>
                     </TableCell>
