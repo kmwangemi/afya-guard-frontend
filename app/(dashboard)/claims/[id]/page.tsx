@@ -307,7 +307,7 @@ export default function ClaimDetailPage() {
                         </div>
                         <Badge
                           variant={
-                            flag.severity === 'critical'
+                            flag.severity === 'CRITICAL'
                               ? 'destructive'
                               : 'secondary'
                           }
@@ -341,7 +341,7 @@ export default function ClaimDetailPage() {
                       <Badge
                         key={flag}
                         variant='destructive'
-                        className='text-xs'
+                        className='text-xs px-3 py-1.5 h-auto whitespace-normal text-left leading-snug'
                       >
                         {flag}
                       </Badge>

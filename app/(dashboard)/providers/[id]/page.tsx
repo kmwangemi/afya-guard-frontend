@@ -183,18 +183,18 @@ export default function ProviderDetailPage() {
                     {provider.providerInformation.county ?? 'N/A'}
                   </p>
                 </div>
-                <div>
+                {/* <div>
                   <p className='text-sm text-gray-600'>Contact</p>
                   <p className='font-semibold text-gray-900'>
                     {provider.providerInformation.phone ?? 'N/A'}
                   </p>
-                </div>
-                <div>
+                </div> */}
+                {/* <div>
                   <p className='text-sm text-gray-600'>Email</p>
                   <p className='font-semibold text-gray-900'>
                     {provider.providerInformation.email ?? 'N/A'}
                   </p>
-                </div>
+                </div> */}
                 <div>
                   <p className='text-sm text-gray-600'>Bed Capacity</p>
                   <p className='font-semibold text-gray-900'>
