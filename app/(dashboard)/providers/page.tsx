@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import { useAddProvider, useProviders } from '@/hooks/queries/useProviders';
 import { FACILITY_TYPES, KENYAN_COUNTIES } from '@/lib/constants';
-import { formatPercentage } from '@/lib/helpers';
+import { formatProviderPercentage } from '@/lib/helpers';
 import { FacilityType, ProviderFilterParams } from '@/types/provider';
 import { Building2, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -276,7 +276,7 @@ export default function ProvidersPage() {
                       {provider.totalClaims.toLocaleString()}
                     </TableCell>
                     <TableCell className='text-right'>
-                      {formatPercentage(provider.flaggedPercentage)}
+                      {formatProviderPercentage(provider.flaggedPercentage)}
                     </TableCell>
                     <TableCell>
                       <RiskScoreBadge

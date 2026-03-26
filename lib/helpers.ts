@@ -108,6 +108,10 @@ export const truncateText = (text: string, maxLength: number): string => {
  * Format percentage
  */
 export const formatPercentage = (value: number): string => {
+  return `${(value * 100).toFixed(1)}%`;
+};
+
+export const formatProviderPercentage = (value: number): string => {
   return `${(value).toFixed(1)}%`;
 };
 
